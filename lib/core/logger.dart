@@ -1,37 +1,44 @@
 import 'package:logger/logger.dart';
 
 class AppLogger {
-  static late final Logger _instance;
+  static Logger? _instance;
 
   static void init() {
-    _instance = Logger(
-      printer: PrettyPrinter(
-        methodCount: 2,
-        errorMethodCount: 8,
-        lineLength: 120,
-        colors: true,
-        printEmojis: true,
-        printTime: true,
-      ),
-    );
+    _instance = Logger();
   }
 
   static void d(String message, [Object? error, StackTrace? stackTrace]) {
-    _instance.d(message, error: error, stackTrace: stackTrace);
+    if (error != null) {
+      _instance?.d('$message: $error', error: error, stackTrace: stackTrace);
+    } else {
+      _instance?.d(message);
+    }
   }
 
   static void i(String message, [Object? error, StackTrace? stackTrace]) {
-    _instance.i(message, error: error, stackTrace: stackTrace);
+    if (error != null) {
+      _instance?.i('$message: $error', error: error, stackTrace: stackTrace);
+    } else {
+      _instance?.i(message);
+    }
   }
 
   static void w(String message, [Object? error, StackTrace? stackTrace]) {
-    _instance.w(message, error: error, stackTrace: stackTrace);
+    if (error != null) {
+      _instance?.w('$message: $error', error: error, stackTrace: stackTrace);
+    } else {
+      _instance?.w(message);
+    }
   }
 
   static void e(String message, [Object? error, StackTrace? stackTrace]) {
-    _instance.e(message, error: error, stackTrace: stackTrace);
+    if (error != null) {
+      _instance?.e('$message: $error', error: error, stackTrace: stackTrace);
+    } else {
+      _instance?.e(message);
+    }
   }
 }
 
 // Alias for convenience
-typedef Logger = AppLogger;
+typedef AppLoggerWrapper = AppLogger;
