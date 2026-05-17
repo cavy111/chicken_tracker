@@ -1,5 +1,5 @@
 name: chicken_tracker
-description: A Flutter app for tracking chicken batches with Firebase backend.
+description: A Flutter desktop app for tracking chicken batches with Firebase backend.
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -16,8 +16,6 @@ dependencies:
   firebase_core: ^2.24.2
   firebase_auth: ^4.16.0
   cloud_firestore: ^4.14.0
-  firebase_messaging: ^14.7.10
-  firebase_crashlytics: ^3.4.9
 
   # State Management
   flutter_riverpod: ^2.4.9
@@ -34,6 +32,9 @@ dependencies:
   equatable: ^2.0.5
   json_annotation: ^4.8.1
   intl: ^0.19.0
+
+  # Notifications (Windows compatible)
+  local_notifier: ^0.1.5
 
 dev_dependencies:
   flutter_test:

@@ -12,13 +12,12 @@
         "equatable",
         "firebase_auth",
         "firebase_core",
-        "firebase_crashlytics",
-        "firebase_messaging",
         "flutter",
         "flutter_riverpod",
         "go_router",
         "intl",
         "json_annotation",
+        "local_notifier",
         "logger",
         "riverpod_annotation"
       ],
@@ -226,29 +225,6 @@
         "meta",
         "riverpod",
         "state_notifier"
-      ]
-    },
-    {
-      "name": "firebase_crashlytics",
-      "version": "3.5.7",
-      "dependencies": [
-        "firebase_core",
-        "firebase_core_platform_interface",
-        "firebase_crashlytics_platform_interface",
-        "flutter",
-        "stack_trace"
-      ]
-    },
-    {
-      "name": "firebase_messaging",
-      "version": "14.7.10",
-      "dependencies": [
-        "firebase_core",
-        "firebase_core_platform_interface",
-        "firebase_messaging_platform_interface",
-        "firebase_messaging_web",
-        "flutter",
-        "meta"
       ]
     },
     {
@@ -797,49 +773,12 @@
       ]
     },
     {
-      "name": "firebase_crashlytics_platform_interface",
-      "version": "3.6.35",
-      "dependencies": [
-        "_flutterfire_internals",
-        "collection",
-        "firebase_core",
-        "flutter",
-        "meta",
-        "plugin_platform_interface"
-      ]
-    },
-    {
       "name": "firebase_core_platform_interface",
       "version": "5.4.2",
       "dependencies": [
         "collection",
         "flutter",
         "flutter_test",
-        "meta",
-        "plugin_platform_interface"
-      ]
-    },
-    {
-      "name": "firebase_messaging_web",
-      "version": "3.5.18",
-      "dependencies": [
-        "_flutterfire_internals",
-        "firebase_core",
-        "firebase_core_web",
-        "firebase_messaging_platform_interface",
-        "flutter",
-        "flutter_web_plugins",
-        "js",
-        "meta"
-      ]
-    },
-    {
-      "name": "firebase_messaging_platform_interface",
-      "version": "4.5.37",
-      "dependencies": [
-        "_flutterfire_internals",
-        "firebase_core",
-        "flutter",
         "meta",
         "plugin_platform_interface"
       ]
@@ -1157,6 +1096,14 @@
       "name": "platform",
       "version": "3.1.6",
       "dependencies": []
+    },
+    {
+      "name": "local_notifier",
+      "version": "0.1.6",
+      "dependencies": [
+        "flutter",
+        "uuid"
+      ]
     }
   ],
   "configVersion": 1
