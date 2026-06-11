@@ -6,6 +6,7 @@ import 'core/logger.dart';
 import 'features/auth/models/user_model.dart';
 import 'features/batches/models/batch_model.dart';
 import 'features/feed/models/feed_model.dart';
+import 'features/notifications/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +21,9 @@ void main() async {
 
   // Set up logger
   AppLogger.init();
+
+  // Initialize local notifications
+  await NotificationService().initialize();
 
   runApp(
     const ProviderScope(
