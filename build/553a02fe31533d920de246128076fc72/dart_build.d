@@ -1,1 +1,1 @@
- C:\\Users\\USER\\Documents\\projects\\chicken_tracker\\build\\553a02fe31533d920de246128076fc72\\dart_build_result.json: 
+ C:\\Users\\USER\\Documents\\projects\\chicken_tracker\\build\\553a02fe31533d920de246128076fc72\\dart_build_result.json:  C:\\Users\\USER\\Documents\\projects\\chicken_tracker\\.dart_tool\\package_config.json C:\\Users\\USER\\Documents\\projects\\chicken_tracker\\pubspec.yaml C:\\Users\\USER\\develop\\flutter\\bin\\cache\\dart-sdk\\version c:\\users\\user\\documents\\projects\\chicken_tracker\\.dart_tool\\package_config.json
