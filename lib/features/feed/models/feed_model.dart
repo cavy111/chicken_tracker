@@ -24,6 +24,12 @@ class FeedEntry extends Equatable {
   @HiveField(8)
   final DateTime updatedAt;
 
+  // New currency fields (store cents)
+  @HiveField(9)
+  final int feedCostCents;
+  @HiveField(10)
+  final int? projectedProfitCents;
+
   const FeedEntry({
     required this.id,
     required this.batchId,
@@ -34,6 +40,8 @@ class FeedEntry extends Equatable {
     required this.userId,
     required this.createdAt,
     required this.updatedAt,
+    this.feedCostCents = 0,
+    this.projectedProfitCents,
   });
 
   @override
@@ -47,6 +55,8 @@ class FeedEntry extends Equatable {
         userId,
         createdAt,
         updatedAt,
+        feedCostCents,
+        projectedProfitCents,
       ];
 
   FeedEntry copyWith({
@@ -59,6 +69,8 @@ class FeedEntry extends Equatable {
     String? userId,
     DateTime? createdAt,
     DateTime? updatedAt,
+    int? feedCostCents,
+    int? projectedProfitCents,
   }) {
     return FeedEntry(
       id: id ?? this.id,
@@ -70,6 +82,8 @@ class FeedEntry extends Equatable {
       userId: userId ?? this.userId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      feedCostCents: feedCostCents ?? this.feedCostCents,
+      projectedProfitCents: projectedProfitCents ?? this.projectedProfitCents,
     );
   }
 }

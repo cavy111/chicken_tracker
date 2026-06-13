@@ -26,6 +26,16 @@ class Batch extends Equatable {
   @HiveField(9)
   final DateTime updatedAt;
 
+  // New fields (append indices)
+  @HiveField(10)
+  final int initialStock;
+  @HiveField(11)
+  final int currentStock;
+  @HiveField(12)
+  final int cashInHandCents;
+  @HiveField(13)
+  final int outstandingCreditCents;
+
   const Batch({
     required this.id,
     required this.name,
@@ -37,6 +47,10 @@ class Batch extends Equatable {
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
+    required this.initialStock,
+    required this.currentStock,
+    required this.cashInHandCents,
+    required this.outstandingCreditCents,
   });
 
   @override
@@ -51,6 +65,10 @@ class Batch extends Equatable {
         isActive,
         createdAt,
         updatedAt,
+        initialStock,
+        currentStock,
+        cashInHandCents,
+        outstandingCreditCents,
       ];
 
   Batch copyWith({
@@ -64,6 +82,10 @@ class Batch extends Equatable {
     bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
+    int? initialStock,
+    int? currentStock,
+    int? cashInHandCents,
+    int? outstandingCreditCents,
   }) {
     return Batch(
       id: id ?? this.id,
@@ -76,6 +98,10 @@ class Batch extends Equatable {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      initialStock: initialStock ?? this.initialStock,
+      currentStock: currentStock ?? this.currentStock,
+      cashInHandCents: cashInHandCents ?? this.cashInHandCents,
+      outstandingCreditCents: outstandingCreditCents ?? this.outstandingCreditCents,
     );
   }
 }

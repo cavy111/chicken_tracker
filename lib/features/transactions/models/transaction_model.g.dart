@@ -1,38 +1,38 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'feed_model.dart';
+part of 'transaction_model.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class FeedEntryAdapter extends TypeAdapter<FeedEntry> {
+class TransactionModelAdapter extends TypeAdapter<TransactionModel> {
   @override
-  final int typeId = 2;
+  final int typeId = 3;
 
   @override
-  FeedEntry read(BinaryReader reader) {
+  TransactionModel read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return FeedEntry(
+    return TransactionModel(
       id: fields[0] as String,
       batchId: fields[1] as String,
-      note: fields[2] as String,
-      imageUrl: fields[3] as String?,
-      feedAmount: fields[4] as int,
-      feedTime: fields[5] as DateTime,
-      userId: fields[6] as String,
-      createdAt: fields[7] as DateTime,
-      updatedAt: fields[8] as DateTime,
-      feedCostCents: fields[9] as int,
-      projectedProfitCents: fields[10] as int?,
+      type: fields[2] as String,
+      amountCents: fields[3] as int,
+      quantity: fields[4] as int?,
+      isCredit: fields[5] as bool,
+      note: fields[6] as String?,
+      date: fields[7] as DateTime,
+      userId: fields[8] as String?,
+      createdAt: fields[9] as DateTime,
+      updatedAt: fields[10] as DateTime,
     );
   }
 
   @override
-  void write(BinaryWriter writer, FeedEntry obj) {
+  void write(BinaryWriter writer, TransactionModel obj) {
     writer
       ..writeByte(11)
       ..writeByte(0)
@@ -40,23 +40,23 @@ class FeedEntryAdapter extends TypeAdapter<FeedEntry> {
       ..writeByte(1)
       ..write(obj.batchId)
       ..writeByte(2)
-      ..write(obj.note)
+      ..write(obj.type)
       ..writeByte(3)
-      ..write(obj.imageUrl)
+      ..write(obj.amountCents)
       ..writeByte(4)
-      ..write(obj.feedAmount)
+      ..write(obj.quantity)
       ..writeByte(5)
-      ..write(obj.feedTime)
+      ..write(obj.isCredit)
       ..writeByte(6)
-      ..write(obj.userId)
+      ..write(obj.note)
       ..writeByte(7)
-      ..write(obj.createdAt)
+      ..write(obj.date)
       ..writeByte(8)
-      ..write(obj.updatedAt)
+      ..write(obj.userId)
       ..writeByte(9)
-      ..write(obj.feedCostCents)
+      ..write(obj.createdAt)
       ..writeByte(10)
-      ..write(obj.projectedProfitCents);
+      ..write(obj.updatedAt);
   }
 
   @override
@@ -65,7 +65,7 @@ class FeedEntryAdapter extends TypeAdapter<FeedEntry> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is FeedEntryAdapter &&
+      other is TransactionModelAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

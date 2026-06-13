@@ -7,6 +7,9 @@ import 'features/auth/models/user_model.dart';
 import 'features/batches/models/batch_model.dart';
 import 'features/feed/models/feed_model.dart';
 import 'features/notifications/notification_service.dart';
+import 'features/transactions/models/transaction_model.dart';
+import 'features/weekly/models/weekly_snapshot.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +21,8 @@ void main() async {
   Hive.registerAdapter(UserAdapter());
   Hive.registerAdapter(BatchAdapter());
   Hive.registerAdapter(FeedEntryAdapter());
+  Hive.registerAdapter(TransactionModelAdapter());
+  Hive.registerAdapter(WeeklySnapshotAdapter());
 
   // Set up logger
   AppLogger.init();

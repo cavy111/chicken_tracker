@@ -101,11 +101,16 @@ class BatchesScreen extends ConsumerWidget {
               if (!formKey.currentState!.validate()) return;
               final id = batch?.id ?? const Uuid().v4();
               final now = DateTime.now();
+              final initialStock = int.parse(countCtrl.text.trim());
               final newBatch = Batch(
                 id: id,
                 name: nameCtrl.text.trim(),
                 description: descCtrl.text.trim(),
-                chickenCount: int.parse(countCtrl.text.trim()),
+                chickenCount: initialStock,
+                initialStock: initialStock,
+                currentStock: initialStock,
+                cashInHandCents: 0,
+                outstandingCreditCents: 0,
                 startDate: batch?.startDate ?? now,
                 endDate: batch?.endDate,
                 userId: batch?.userId ?? (userId ?? 'unknown'),
