@@ -47,10 +47,10 @@ class Batch extends Equatable {
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
-    required this.initialStock,
-    required this.currentStock,
-    required this.cashInHandCents,
-    required this.outstandingCreditCents,
+    this.initialStock = 0,
+    this.currentStock = 0,
+    this.cashInHandCents = 0,
+    this.outstandingCreditCents = 0,
   });
 
   @override

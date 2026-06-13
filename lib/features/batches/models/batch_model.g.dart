@@ -27,10 +27,10 @@ class BatchAdapter extends TypeAdapter<Batch> {
       isActive: fields[7] as bool,
       createdAt: fields[8] as DateTime,
       updatedAt: fields[9] as DateTime,
-      initialStock: fields[10] as int,
-      currentStock: fields[11] as int,
-      cashInHandCents: fields[12] as int,
-      outstandingCreditCents: fields[13] as int,
+      initialStock: (fields[10] as int?) ?? 0,
+      currentStock: (fields[11] as int?) ?? 0,
+      cashInHandCents: (fields[12] as int?) ?? 0,
+      outstandingCreditCents: (fields[13] as int?) ?? 0,
     );
   }
 
