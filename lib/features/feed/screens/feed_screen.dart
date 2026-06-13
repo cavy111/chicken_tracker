@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../providers/feed_provider.dart';
 import '../models/feed_model.dart';
 import '../../batches/providers/batches_provider.dart';
 import '../../batches/models/batch_model.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../notifications/notification_service.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
@@ -21,7 +23,18 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     final batches = ref.watch(batchesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Feed Entries')),
+      appBar: AppBar(
+        title: const Text('Feed Entries'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await ref.read(authProvider.notifier).logout();
+            },
+            tooltip: 'Logout',
+          ),
+        ],
+      ),
       body: feed.isEmpty
           ? const Center(child: Text('No feed entries yet'))
           : ListView.separated(
@@ -29,7 +42,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               separatorBuilder: (_, __) => const Divider(),
               itemBuilder: (context, idx) {
                 final e = feed[idx];
-                final batchName = batches.firstWhere(
+                final batch = batches.firstWhere(
                   (b) => b.id == e.batchId,
                   orElse: () => Batch(
                     id: '',
@@ -46,10 +59,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                     createdAt: DateTime.now(),
                     updatedAt: DateTime.now(),
                   ),
-                ).name;
+                );
                 return ListTile(
-                  title: Text(batchName),
+                  title: Text(batch.name),
                   subtitle: Text('${e.feedAmount} - ${e.note}'),
+                  onTap: batch.id.isNotEmpty ? () => context.push('/batches/${batch.id}') : null,
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -67,6 +81,18 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddFeedDialog(context, ref, batches),
         child: const Icon(Icons.add),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 1,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.egg), label: 'Batches'),
+          BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Feed'),
+        ],
+        onTap: (index) {
+          if (index == 0) {
+            context.go('/batches');
+          }
+        },
       ),
     );
   }

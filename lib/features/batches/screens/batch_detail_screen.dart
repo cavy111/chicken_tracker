@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/batches_provider.dart';
 import '../models/batch_model.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../transactions/providers/transactions_provider.dart';
 
 class BatchDetailScreen extends ConsumerWidget {
@@ -14,7 +16,22 @@ class BatchDetailScreen extends ConsumerWidget {
     final batch = batches.firstWhere((b) => b.id == batchId, orElse: () => throw Exception('Batch not found'));
 
     return Scaffold(
-      appBar: AppBar(title: Text(batch.name)),
+      appBar: AppBar(
+        title: Text(batch.name),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await ref.read(authProvider.notifier).logout();
+            },
+            tooltip: 'Logout',
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(

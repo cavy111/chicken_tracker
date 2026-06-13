@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../models/batch_model.dart';
 import '../providers/batches_provider.dart';
@@ -15,7 +16,18 @@ class BatchesScreen extends ConsumerWidget {
     final auth = ref.watch(authProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Batches')),
+      appBar: AppBar(
+        title: const Text('Batches'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await ref.read(authProvider.notifier).logout();
+            },
+            tooltip: 'Logout',
+          ),
+        ],
+      ),
       body: batches.isEmpty
           ? const Center(child: Text('No batches yet'))
           : ListView.separated(
@@ -26,6 +38,7 @@ class BatchesScreen extends ConsumerWidget {
                 return ListTile(
                   title: Text(b.name),
                   subtitle: Text('${b.chickenCount} chickens'),
+                  onTap: () => context.push('/batches/${b.id}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -55,6 +68,18 @@ class BatchesScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showBatchDialog(context, ref, userId: auth.userId),
         child: const Icon(Icons.add),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 0,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.egg), label: 'Batches'),
+          BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Feed'),
+        ],
+        onTap: (index) {
+          if (index == 1) {
+            context.go('/feed');
+          }
+        },
       ),
     );
   }
