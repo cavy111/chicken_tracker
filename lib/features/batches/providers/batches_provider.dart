@@ -10,12 +10,16 @@ class BatchesNotifier extends StateNotifier<List<Batch>> {
 
   Future<void> _loadBatches() async {
     final box = await Hive.openBox<Batch>('batches');
-    // ensure currentStock defaults to initialStock if not set
+    // Migrate legacy batches created before initialStock/currentStock existed,
+    // falling back to chickenCount which was the original stock field.
     final batches = box.values.toList();
     state = batches.map((b) {
-      // If currentStock is 0 or was never set, default to initialStock
-      if ((b.currentStock == 0 || b.currentStock < 0) && b.initialStock > 0) {
-        final updated = b.copyWith(currentStock: b.initialStock);
+      final initialStock = b.initialStock > 0 ? b.initialStock : b.chickenCount;
+      final currentStock =
+          b.currentStock > 0 ? b.currentStock : initialStock;
+      if (initialStock != b.initialStock || currentStock != b.currentStock) {
+        final updated =
+            b.copyWith(initialStock: initialStock, currentStock: currentStock);
         box.put(updated.id, updated);
         return updated;
       }
