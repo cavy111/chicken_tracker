@@ -84,13 +84,17 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 1,
+        type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.egg), label: 'Batches'),
           BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Feed'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
         ],
         onTap: (index) {
           if (index == 0) {
             context.go('/batches');
+          } else if (index == 2) {
+            context.go('/settings');
           }
         },
       ),

@@ -73,13 +73,17 @@ class BatchesScreen extends ConsumerWidget {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 0,
+        type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.egg), label: 'Batches'),
           BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Feed'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
         ],
         onTap: (index) {
           if (index == 1) {
             context.go('/feed');
+          } else if (index == 2) {
+            context.go('/settings');
           }
         },
       ),
