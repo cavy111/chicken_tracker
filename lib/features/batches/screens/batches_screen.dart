@@ -6,6 +6,7 @@ import '../models/batch_model.dart';
 import '../providers/batches_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
+import '../../../shared/utils/date_utils.dart';
 
 class BatchesScreen extends ConsumerWidget {
   const BatchesScreen({super.key});
@@ -35,9 +36,10 @@ class BatchesScreen extends ConsumerWidget {
               separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (context, idx) {
                 final b = batches[idx];
+                final batchAge = AppDateUtils.getBatchAge(b.startDate);
                 return ListTile(
                   title: Text(b.name),
-                  subtitle: Text('${b.chickenCount} chickens'),
+                  subtitle: Text('Stock: ${b.currentStock} | Age: $batchAge'),
                   onTap: () => context.push('/batches/${b.id}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,

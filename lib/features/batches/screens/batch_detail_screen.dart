@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../providers/batches_provider.dart';
 import '../models/batch_model.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../notifications/notification_service.dart';
 import '../../transactions/providers/transactions_provider.dart';
+import '../../../shared/utils/date_utils.dart';
 
 class BatchDetailScreen extends ConsumerWidget {
   final String batchId;
@@ -14,6 +16,21 @@ class BatchDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final batches = ref.watch(batchesProvider);
     final batch = batches.firstWhere((b) => b.id == batchId, orElse: () => throw Exception('Batch not found'));
+
+    // Calculate batch age and check for milestones
+    final batchAgeInDays = AppDateUtils.getBatchAgeInDays(batch.startDate);
+    final batchAgeInWeeks = AppDateUtils.getBatchAgeInWeeks(batch.startDate);
+    final ageDisplay = AppDateUtils.getBatchAge(batch.startDate);
+
+    // Show notification if batch reached a week milestone
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (batchAgeInDays > 0 && batchAgeInDays % 7 == 0 && batchAgeInWeeks > 0) {
+        NotificationService().showNotification(
+          title: '${batch.name} is now $batchAgeInWeeks week${batchAgeInWeeks == 1 ? '' : 's'} old',
+          body: 'Your batch has reached $ageDisplay old. Current stock: ${batch.currentStock}',
+        );
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -36,10 +53,41 @@ class BatchDetailScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
+            // Batch Info Card
             Card(
-              child: ListTile(
-                title: Text('Stock: ${batch.currentStock}'),
-                subtitle: Text('Cash: ${(batch.cashInHandCents / 100).toStringAsFixed(2)} | Outstanding: ${(batch.outstandingCreditCents/100).toStringAsFixed(2)}'),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Age: $ageDisplay',
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                              ),
+                              Text(
+                                'Started: ${AppDateUtils.formatDate(batch.startDate)}',
+                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(),
+                    Text('Stock: ${batch.currentStock}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text('Initial Stock: ${batch.initialStock}', style: const TextStyle(fontSize: 12)),
+                    const SizedBox(height: 8),
+                    Text('Cash: \$${(batch.cashInHandCents / 100).toStringAsFixed(2)}', style: const TextStyle(fontSize: 14)),
+                    Text('Outstanding Credit: \$${(batch.outstandingCreditCents / 100).toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, color: Colors.orange)),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 8),

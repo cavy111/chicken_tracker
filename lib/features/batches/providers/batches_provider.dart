@@ -10,10 +10,11 @@ class BatchesNotifier extends StateNotifier<List<Batch>> {
 
   Future<void> _loadBatches() async {
     final box = await Hive.openBox<Batch>('batches');
-    // ensure currentStock defaults
+    // ensure currentStock defaults to initialStock if not set
     final batches = box.values.toList();
     state = batches.map((b) {
-      if (b.currentStock == 0 && b.initialStock > 0) {
+      // If currentStock is 0 or was never set, default to initialStock
+      if ((b.currentStock == 0 || b.currentStock < 0) && b.initialStock > 0) {
         final updated = b.copyWith(currentStock: b.initialStock);
         box.put(updated.id, updated);
         return updated;
@@ -24,8 +25,10 @@ class BatchesNotifier extends StateNotifier<List<Batch>> {
 
   Future<void> addBatch(Batch batch) async {
     final box = await Hive.openBox<Batch>('batches');
-    await box.put(batch.id, batch);
-    state = [...state, batch];
+    // Ensure currentStock is set to initialStock if not explicitly set
+    final batchToSave = batch.currentStock == 0 ? batch.copyWith(currentStock: batch.initialStock) : batch;
+    await box.put(batchToSave.id, batchToSave);
+    state = [...state, batchToSave];
   }
 
   Future<void> updateBatch(Batch batch) async {
