@@ -13,8 +13,8 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // App should load the initial auth screen
-      expect(find.text('Auth Screen - To be implemented'), findsOneWidget);
+      // App should load the initial auth screen (sign-in form)
+      expect(find.text('Sign in'), findsOneWidget);
     });
   });
 }
