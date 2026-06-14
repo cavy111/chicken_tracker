@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/screens/auth_screen.dart';
 import '../features/batches/screens/batches_screen.dart';
 import '../features/feed/screens/feed_screen.dart';
+import '../features/settings/screens/settings_screen.dart';
 import '../features/batches/screens/batch_detail_screen.dart';
 import '../features/auth/providers/auth_provider.dart';
 
@@ -39,6 +40,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/feed',
         builder: (context, state) => const FeedScreen(),
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
       ),
       GoRoute(
         path: '/batches/:id',
