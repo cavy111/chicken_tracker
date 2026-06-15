@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:uuid/uuid.dart';
-import '../models/batch_model.dart';
 import '../providers/batches_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/utils/date_utils.dart';
+import '../../../shared/widgets/batch_edit_dialog.dart';
 
 class BatchesScreen extends ConsumerWidget {
   const BatchesScreen({super.key});
@@ -47,7 +46,7 @@ class BatchesScreen extends ConsumerWidget {
                       IconButton(
                         icon: const Icon(Icons.edit),
                         onPressed: () {
-                          _showBatchDialog(context, ref, batch: b);
+                          showBatchEditDialog(context, ref, batch: b);
                         },
                       ),
                       IconButton(
@@ -68,7 +67,7 @@ class BatchesScreen extends ConsumerWidget {
               },
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showBatchDialog(context, ref, userId: auth.userId),
+        onPressed: () => showBatchEditDialog(context, ref, userId: auth.userId),
         child: const Icon(Icons.add),
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -86,80 +85,6 @@ class BatchesScreen extends ConsumerWidget {
             context.go('/settings');
           }
         },
-      ),
-    );
-  }
-
-  void _showBatchDialog(BuildContext context, WidgetRef ref,
-      {Batch? batch, String? userId}) {
-    final nameCtrl = TextEditingController(text: batch?.name ?? '');
-    final descCtrl = TextEditingController(text: batch?.description ?? '');
-    final countCtrl =
-        TextEditingController(text: batch != null ? '${batch.chickenCount}' : '');
-    final formKey = GlobalKey<FormState>();
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(batch == null ? 'Add Batch' : 'Edit Batch'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: 'Name'),
-                validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
-              ),
-              TextFormField(
-                controller: descCtrl,
-                decoration: const InputDecoration(labelText: 'Description'),
-              ),
-              TextFormField(
-                controller: countCtrl,
-                decoration: const InputDecoration(labelText: 'Chicken Count'),
-                keyboardType: TextInputType.number,
-                validator: (v) =>
-                    (v == null || int.tryParse(v) == null) ? 'Enter a number' : null,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              if (!formKey.currentState!.validate()) return;
-              final id = batch?.id ?? const Uuid().v4();
-              final now = DateTime.now();
-              final initialStock = int.parse(countCtrl.text.trim());
-              final newBatch = Batch(
-                id: id,
-                name: nameCtrl.text.trim(),
-                description: descCtrl.text.trim(),
-                chickenCount: initialStock,
-                initialStock: initialStock,
-                currentStock: initialStock,
-                cashInHandCents: 0,
-                outstandingCreditCents: 0,
-                startDate: batch?.startDate ?? now,
-                endDate: batch?.endDate,
-                userId: batch?.userId ?? (userId ?? 'unknown'),
-                isActive: batch?.isActive ?? true,
-                createdAt: batch?.createdAt ?? now,
-                updatedAt: now,
-              );
-              if (batch == null) {
-                await ref.read(batchesProvider.notifier).addBatch(newBatch);
-              } else {
-                await ref.read(batchesProvider.notifier).updateBatch(newBatch);
-              }
-              if (!context.mounted) return;
-              Navigator.of(context).pop();
-            },
-            child: const Text('Save'),
-          ),
-        ],
       ),
     );
   }

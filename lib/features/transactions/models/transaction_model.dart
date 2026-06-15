@@ -9,7 +9,7 @@ class TransactionModel {
   @HiveField(1)
   final String batchId;
   @HiveField(2)
-  final String type; // sale, withdrawal, expense, credit_sale, credit_payment
+  final String type;
   @HiveField(3)
   final int amountCents;
   @HiveField(4)
@@ -27,6 +27,14 @@ class TransactionModel {
   @HiveField(10)
   final DateTime updatedAt;
 
+  // New credit fields
+  @HiveField(11)
+  final String? creditorName;
+  @HiveField(12)
+  final DateTime? creditDate;
+  @HiveField(13)
+  final DateTime? expectedPaymentDate;
+
   TransactionModel({
     required this.id,
     required this.batchId,
@@ -39,5 +47,8 @@ class TransactionModel {
     this.userId,
     required this.createdAt,
     required this.updatedAt,
+    this.creditorName,
+    this.creditDate,
+    this.expectedPaymentDate,
   });
 }

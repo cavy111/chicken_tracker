@@ -114,8 +114,12 @@ class BatchDetailScreen extends ConsumerWidget {
   void _showRecordSale(BuildContext context, WidgetRef ref, Batch batch) {
     final qtyCtrl = TextEditingController();
     final priceCtrl = TextEditingController();
+    final creditorCtrl = TextEditingController();
     bool isCredit = false;
+    DateTime creditDate = DateTime.now();
+    DateTime expectedPaymentDate = DateTime.now().add(const Duration(days: 7));
     final formKey = GlobalKey<FormState>();
+
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -123,44 +127,125 @@ class BatchDetailScreen extends ConsumerWidget {
         content: StatefulBuilder(builder: (c, setS) {
           return Form(
             key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: qtyCtrl,
-                  decoration: const InputDecoration(labelText: 'Quantity sold'),
-                  keyboardType: TextInputType.number,
-                  validator: (v) => (v == null || int.tryParse(v) == null) ? 'Enter number' : null,
-                ),
-                TextFormField(
-                  controller: priceCtrl,
-                  decoration: const InputDecoration(labelText: 'Total amount (e.g., 12.34)'),
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  validator: (v) => (v == null || double.tryParse(v) == null) ? 'Enter amount' : null,
-                ),
-                Row(
-                  children: [
-                    const Text('Credit'),
-                    Checkbox(value: isCredit, onChanged: (b) => setS(() => isCredit = b ?? false)),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: qtyCtrl,
+                    decoration: const InputDecoration(labelText: 'Quantity sold'),
+                    keyboardType: TextInputType.number,
+                    validator: (v) =>
+                        (v == null || int.tryParse(v) == null) ? 'Enter number' : null,
+                  ),
+                  TextFormField(
+                    controller: priceCtrl,
+                    decoration:
+                        const InputDecoration(labelText: 'Total amount (e.g., 12.34)'),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    validator: (v) =>
+                        (v == null || double.tryParse(v) == null) ? 'Enter amount' : null,
+                  ),
+                  Row(
+                    children: [
+                      const Text('Credit Sale'),
+                      Checkbox(
+                        value: isCredit,
+                        onChanged: (b) => setS(() => isCredit = b ?? false),
+                      ),
+                    ],
+                  ),
+
+                  // Credit-only fields
+                  if (isCredit) ...[
+                    const Divider(),
+                    TextFormField(
+                      controller: creditorCtrl,
+                      decoration:
+                          const InputDecoration(labelText: 'Creditor name'),
+                      validator: (v) => (isCredit && (v == null || v.trim().isEmpty))
+                          ? 'Enter creditor name'
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Credit date picker
+                    Row(
+                      children: [
+                        const Text('Credit date: ',
+                            style: TextStyle(fontSize: 13)),
+                        TextButton(
+                          child: Text(
+                            '${creditDate.year}-${creditDate.month.toString().padLeft(2, '0')}-${creditDate.day.toString().padLeft(2, '0')}',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: c,
+                              initialDate: creditDate,
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime.now(),
+                            );
+                            if (picked != null) setS(() => creditDate = picked);
+                          },
+                        ),
+                      ],
+                    ),
+
+                    // Expected payment date picker
+                    Row(
+                      children: [
+                        const Text('Due date: ',
+                            style: TextStyle(fontSize: 13)),
+                        TextButton(
+                          child: Text(
+                            '${expectedPaymentDate.year}-${expectedPaymentDate.month.toString().padLeft(2, '0')}-${expectedPaymentDate.day.toString().padLeft(2, '0')}',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: c,
+                              initialDate: expectedPaymentDate,
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime(2100),
+                            );
+                            if (picked != null) {
+                              setS(() => expectedPaymentDate = picked);
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'Defaults to 1 week from today if not changed',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                    ),
                   ],
-                ),
-              ],
+                ],
+              ),
             ),
           );
         }),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () async {
               if (!formKey.currentState!.validate()) return;
               final qty = int.parse(qtyCtrl.text.trim());
-              final amountDouble = double.parse(priceCtrl.text.trim());
-              final amountCents = (amountDouble * 100).round();
+              final amountCents =
+                  (double.parse(priceCtrl.text.trim()) * 100).round();
               await ref.read(transactionsProvider.notifier).recordSale(
                     batchId: batch.id,
                     quantity: qty,
                     totalAmountCents: amountCents,
                     isCredit: isCredit,
+                    creditorName: isCredit ? creditorCtrl.text.trim() : null,
+                    creditDate: isCredit ? creditDate : null,
+                    expectedPaymentDate: isCredit ? expectedPaymentDate : null,
                   );
               if (!context.mounted) return;
               Navigator.of(context).pop();
@@ -171,7 +256,6 @@ class BatchDetailScreen extends ConsumerWidget {
       ),
     );
   }
-
   void _showWithdrawal(BuildContext context, WidgetRef ref, Batch batch) {
     final amtCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();

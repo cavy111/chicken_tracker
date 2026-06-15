@@ -30,11 +30,14 @@ class TransactionsNotifier extends StateNotifier<List<TransactionModel>> {
   }
 
   Future<void> recordSale({
-    required String batchId,
-    required int quantity,
-    required int totalAmountCents,
-    required bool isCredit,
-    String? note,
+  required String batchId,
+  required int quantity,
+  required int totalAmountCents,
+  required bool isCredit,
+  String? note,
+  String? creditorName,
+  DateTime? creditDate,
+  DateTime? expectedPaymentDate,
   }) async {
     final id = const Uuid().v4();
     final now = DateTime.now();
@@ -50,6 +53,12 @@ class TransactionsNotifier extends StateNotifier<List<TransactionModel>> {
       userId: null,
       createdAt: now,
       updatedAt: now,
+      creditorName: creditorName,
+      // Default creditDate to now, expectedPaymentDate to now + 7 days if not provided
+      creditDate: isCredit ? (creditDate ?? now) : null,
+      expectedPaymentDate: isCredit
+          ? (expectedPaymentDate ?? now.add(const Duration(days: 7)))
+          : null,
     );
     await addTransaction(t);
   }
