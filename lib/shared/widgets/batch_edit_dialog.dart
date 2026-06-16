@@ -12,10 +12,18 @@ Future<void> showBatchEditDialog(
 }) {
   final nameCtrl = TextEditingController(text: batch?.name ?? '');
   final descCtrl = TextEditingController(text: batch?.description ?? '');
-  final initialStockCtrl = TextEditingController(
-      text: batch != null ? '${batch.initialStock}' : '');
-  final currentStockCtrl = TextEditingController(
-      text: batch != null ? '${batch.currentStock}' : '');
+  final initialStockCtrl =
+      TextEditingController(text: batch != null ? '${batch.initialStock}' : '');
+  final currentStockCtrl =
+      TextEditingController(text: batch != null ? '${batch.currentStock}' : '');
+  final salePriceCtrl = TextEditingController(
+      text: batch != null && batch.salePriceCents > 0
+          ? (batch.salePriceCents / 100).toStringAsFixed(2)
+          : '');
+  final stockCostCtrl = TextEditingController(
+      text: batch != null && batch.stockCostCents > 0
+          ? (batch.stockCostCents / 100).toStringAsFixed(2)
+          : '');
   final formKey = GlobalKey<FormState>();
   DateTime selectedStartDate = batch?.startDate ?? DateTime.now();
 
@@ -23,6 +31,14 @@ Future<void> showBatchEditDialog(
     if (v == null || v.trim().isEmpty) return 'Required';
     final n = int.tryParse(v.trim());
     if (n == null) return 'Enter a number';
+    if (n < 0) return 'Must be 0 or more';
+    return null;
+  }
+
+  String? validateMoney(String? v) {
+    if (v == null || v.trim().isEmpty) return null;
+    final n = double.tryParse(v.trim());
+    if (n == null) return 'Enter an amount';
     if (n < 0) return 'Must be 0 or more';
     return null;
   }
@@ -58,6 +74,22 @@ Future<void> showBatchEditDialog(
                 decoration: const InputDecoration(labelText: 'Current Stock'),
                 keyboardType: TextInputType.number,
                 validator: validateInt,
+              ),
+              TextFormField(
+                controller: salePriceCtrl,
+                decoration:
+                    const InputDecoration(labelText: 'Sale price per chicken'),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                validator: validateMoney,
+              ),
+              TextFormField(
+                controller: stockCostCtrl,
+                decoration:
+                    const InputDecoration(labelText: 'Total stock cost'),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                validator: validateMoney,
               ),
               const SizedBox(height: 8),
               ListTile(
@@ -97,6 +129,12 @@ Future<void> showBatchEditDialog(
               final now = DateTime.now();
               final initialStock = int.parse(initialStockCtrl.text.trim());
               final currentStock = int.parse(currentStockCtrl.text.trim());
+              final salePriceCents = salePriceCtrl.text.trim().isEmpty
+                  ? 0
+                  : (double.parse(salePriceCtrl.text.trim()) * 100).round();
+              final stockCostCents = stockCostCtrl.text.trim().isEmpty
+                  ? 0
+                  : (double.parse(stockCostCtrl.text.trim()) * 100).round();
               final newBatch = Batch(
                 id: id,
                 name: nameCtrl.text.trim(),
@@ -106,6 +144,8 @@ Future<void> showBatchEditDialog(
                 currentStock: currentStock,
                 cashInHandCents: batch?.cashInHandCents ?? 0,
                 outstandingCreditCents: batch?.outstandingCreditCents ?? 0,
+                salePriceCents: salePriceCents,
+                stockCostCents: stockCostCents,
                 startDate: selectedStartDate,
                 endDate: batch?.endDate,
                 userId: batch?.userId ?? (userId ?? 'unknown'),

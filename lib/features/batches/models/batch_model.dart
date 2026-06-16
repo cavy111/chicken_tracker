@@ -35,6 +35,10 @@ class Batch extends Equatable {
   final int cashInHandCents;
   @HiveField(13)
   final int outstandingCreditCents;
+  @HiveField(14)
+  final int salePriceCents;
+  @HiveField(15)
+  final int stockCostCents;
 
   const Batch({
     required this.id,
@@ -51,6 +55,8 @@ class Batch extends Equatable {
     this.currentStock = 0,
     this.cashInHandCents = 0,
     this.outstandingCreditCents = 0,
+    this.salePriceCents = 0,
+    this.stockCostCents = 0,
   });
 
   @override
@@ -69,6 +75,8 @@ class Batch extends Equatable {
         currentStock,
         cashInHandCents,
         outstandingCreditCents,
+        salePriceCents,
+        stockCostCents,
       ];
 
   Batch copyWith({
@@ -86,6 +94,8 @@ class Batch extends Equatable {
     int? currentStock,
     int? cashInHandCents,
     int? outstandingCreditCents,
+    int? salePriceCents,
+    int? stockCostCents,
   }) {
     return Batch(
       id: id ?? this.id,
@@ -101,7 +111,10 @@ class Batch extends Equatable {
       initialStock: initialStock ?? this.initialStock,
       currentStock: currentStock ?? this.currentStock,
       cashInHandCents: cashInHandCents ?? this.cashInHandCents,
-      outstandingCreditCents: outstandingCreditCents ?? this.outstandingCreditCents,
+      outstandingCreditCents:
+          outstandingCreditCents ?? this.outstandingCreditCents,
+      salePriceCents: salePriceCents ?? this.salePriceCents,
+      stockCostCents: stockCostCents ?? this.stockCostCents,
     );
   }
 }

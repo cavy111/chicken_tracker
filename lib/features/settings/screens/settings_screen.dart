@@ -44,7 +44,8 @@ class SettingsScreen extends ConsumerWidget {
               (b) => ListTile(
                 title: Text(b.name),
                 subtitle: Text(
-                    'Stock: ${b.currentStock} | Initial: ${b.initialStock}'),
+                  'Stock: ${b.currentStock} | Sale: \$${(b.salePriceCents / 100).toStringAsFixed(2)} | Stock cost: \$${(b.stockCostCents / 100).toStringAsFixed(2)}',
+                ),
                 trailing: const Icon(Icons.edit),
                 onTap: () => showBatchEditDialog(context, ref, batch: b),
               ),
@@ -57,7 +58,8 @@ class SettingsScreen extends ConsumerWidget {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.egg), label: 'Batches'),
           BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Feed'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.settings), label: 'Settings'),
         ],
         onTap: (index) {
           if (index == 0) {

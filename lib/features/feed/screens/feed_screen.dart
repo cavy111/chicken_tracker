@@ -62,15 +62,21 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                 );
                 return ListTile(
                   title: Text(batch.name),
-                  subtitle: Text('${e.feedAmount} - ${e.note}'),
-                  onTap: batch.id.isNotEmpty ? () => context.push('/batches/${batch.id}') : null,
+                  subtitle: Text(
+                    '${e.feedAmount} - \$${(e.feedCostCents / 100).toStringAsFixed(2)} - ${e.note}',
+                  ),
+                  onTap: batch.id.isNotEmpty
+                      ? () => context.push('/batches/${batch.id}')
+                      : null,
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
                         icon: const Icon(Icons.delete),
                         onPressed: () async {
-                          await ref.read(feedProvider.notifier).deleteFeedEntry(e.id);
+                          await ref
+                              .read(feedProvider.notifier)
+                              .deleteFeedEntry(e.id);
                         },
                       ),
                     ],
@@ -88,7 +94,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.egg), label: 'Batches'),
           BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Feed'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.settings), label: 'Settings'),
         ],
         onTap: (index) {
           if (index == 0) {
@@ -101,11 +108,14 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     );
   }
 
-  void _showAddFeedDialog(BuildContext context, WidgetRef ref, List<Batch> batches) {
+  void _showAddFeedDialog(
+      BuildContext context, WidgetRef ref, List<Batch> batches) {
     final formKey = GlobalKey<FormState>();
-    final batchIdHolder = ValueNotifier<String?>(batches.isNotEmpty ? batches.first.id : null);
+    final batchIdHolder =
+        ValueNotifier<String?>(batches.isNotEmpty ? batches.first.id : null);
     final noteCtrl = TextEditingController();
     final amountCtrl = TextEditingController();
+    final costCtrl = TextEditingController();
 
     showDialog(
       context: context,
@@ -120,8 +130,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                 valueListenable: batchIdHolder,
                 builder: (_, value, __) {
                   return DropdownButtonFormField<String>(
-                    value: value,
-                    items: batches.map((b) => DropdownMenuItem(value: b.id, child: Text(b.name))).toList(),
+                    initialValue: value,
+                    items: batches
+                        .map((b) =>
+                            DropdownMenuItem(value: b.id, child: Text(b.name)))
+                        .toList(),
                     onChanged: (v) => batchIdHolder.value = v,
                     decoration: const InputDecoration(labelText: 'Batch'),
                     validator: (v) => v == null ? 'Select a batch' : null,
@@ -132,7 +145,23 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                 controller: amountCtrl,
                 decoration: const InputDecoration(labelText: 'Feed Amount'),
                 keyboardType: TextInputType.number,
-                validator: (v) => (v == null || int.tryParse(v) == null) ? 'Enter number' : null,
+                validator: (v) => (v == null || int.tryParse(v) == null)
+                    ? 'Enter number'
+                    : null,
+              ),
+              TextFormField(
+                controller: costCtrl,
+                decoration:
+                    const InputDecoration(labelText: 'Feed cost (optional)'),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return null;
+                  final amount = double.tryParse(v);
+                  if (amount == null) return 'Enter amount';
+                  if (amount < 0) return 'Must be 0 or more';
+                  return null;
+                },
               ),
               TextFormField(
                 controller: noteCtrl,
@@ -142,7 +171,9 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
               if (!formKey.currentState!.validate()) return;
@@ -158,6 +189,9 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                 userId: 'local', // keep simple for now
                 createdAt: now,
                 updatedAt: now,
+                feedCostCents: costCtrl.text.trim().isEmpty
+                    ? 0
+                    : (double.parse(costCtrl.text.trim()) * 100).round(),
               );
               await ref.read(feedProvider.notifier).addFeedEntry(entry);
 
@@ -167,7 +201,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                 body: 'Added feed entry for batch',
               );
 
-              if (!mounted) return;
+              if (!context.mounted) return;
               Navigator.of(context).pop();
             },
             child: const Text('Add'),

@@ -31,13 +31,15 @@ class BatchAdapter extends TypeAdapter<Batch> {
       currentStock: (fields[11] as int?) ?? 0,
       cashInHandCents: (fields[12] as int?) ?? 0,
       outstandingCreditCents: (fields[13] as int?) ?? 0,
+      salePriceCents: (fields[14] as int?) ?? 0,
+      stockCostCents: (fields[15] as int?) ?? 0,
     );
   }
 
   @override
   void write(BinaryWriter writer, Batch obj) {
     writer
-      ..writeByte(14)
+      ..writeByte(16)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -65,7 +67,11 @@ class BatchAdapter extends TypeAdapter<Batch> {
       ..writeByte(12)
       ..write(obj.cashInHandCents)
       ..writeByte(13)
-      ..write(obj.outstandingCreditCents);
+      ..write(obj.outstandingCreditCents)
+      ..writeByte(14)
+      ..write(obj.salePriceCents)
+      ..writeByte(15)
+      ..write(obj.stockCostCents);
   }
 
   @override

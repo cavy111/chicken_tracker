@@ -30,6 +30,8 @@ class TransactionsNotifier extends StateNotifier<List<TransactionModel>> {
     required int quantity,
     required int totalAmountCents,
     required bool isCredit,
+    int discountCents = 0,
+    int? unitSalePriceCents,
     String? note,
     String? creditorName,
     DateTime? creditDate,
@@ -50,13 +52,31 @@ class TransactionsNotifier extends StateNotifier<List<TransactionModel>> {
       createdAt: now,
       updatedAt: now,
       creditorName: creditorName,
-      // Default creditDate to now, expectedPaymentDate to now + 7 days if not provided
       creditDate: isCredit ? (creditDate ?? now) : null,
       expectedPaymentDate: isCredit
           ? (expectedPaymentDate ?? now.add(const Duration(days: 7)))
           : null,
+      discountCents: discountCents,
+      unitSalePriceCents: unitSalePriceCents,
     );
     await addTransaction(t);
+    if (discountCents > 0) {
+      await addTransaction(
+        TransactionModel(
+          id: const Uuid().v4(),
+          batchId: batchId,
+          type: 'discount',
+          amountCents: discountCents,
+          quantity: quantity,
+          isCredit: false,
+          note: note?.isNotEmpty == true ? note : 'Sale discount',
+          date: now,
+          userId: null,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+    }
   }
 
   Future<void> recordWithdrawal({
@@ -72,6 +92,29 @@ class TransactionsNotifier extends StateNotifier<List<TransactionModel>> {
       type: 'withdrawal',
       amountCents: amountCents,
       quantity: null,
+      isCredit: false,
+      note: note,
+      date: now,
+      userId: null,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await addTransaction(t);
+  }
+
+  Future<void> recordMortality({
+    required String batchId,
+    required int quantity,
+    String? note,
+  }) async {
+    final id = const Uuid().v4();
+    final now = DateTime.now();
+    final t = TransactionModel(
+      id: id,
+      batchId: batchId,
+      type: 'mortality',
+      amountCents: 0,
+      quantity: quantity,
       isCredit: false,
       note: note,
       date: now,

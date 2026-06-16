@@ -32,13 +32,15 @@ class TransactionModelAdapter extends TypeAdapter<TransactionModel> {
       creditDate: fields[12] as DateTime?,
       expectedPaymentDate: fields[13] as DateTime?,
       linkedCreditSaleId: fields[14] as String?,
+      discountCents: (fields[15] as int?) ?? 0,
+      unitSalePriceCents: fields[16] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, TransactionModel obj) {
     writer
-      ..writeByte(15)
+      ..writeByte(17)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -68,7 +70,11 @@ class TransactionModelAdapter extends TypeAdapter<TransactionModel> {
       ..writeByte(13)
       ..write(obj.expectedPaymentDate)
       ..writeByte(14)
-      ..write(obj.linkedCreditSaleId);
+      ..write(obj.linkedCreditSaleId)
+      ..writeByte(15)
+      ..write(obj.discountCents)
+      ..writeByte(16)
+      ..write(obj.unitSalePriceCents);
   }
 
   @override

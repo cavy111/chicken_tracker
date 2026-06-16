@@ -36,6 +36,10 @@ class TransactionModel {
   final DateTime? expectedPaymentDate;
   @HiveField(14)
   final String? linkedCreditSaleId;
+  @HiveField(15)
+  final int discountCents;
+  @HiveField(16)
+  final int? unitSalePriceCents;
 
   TransactionModel({
     required this.id,
@@ -53,5 +57,7 @@ class TransactionModel {
     this.creditDate,
     this.expectedPaymentDate,
     this.linkedCreditSaleId,
+    this.discountCents = 0,
+    this.unitSalePriceCents,
   });
 }

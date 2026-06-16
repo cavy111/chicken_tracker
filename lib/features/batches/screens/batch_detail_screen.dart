@@ -5,6 +5,7 @@ import '../providers/batches_provider.dart';
 import '../providers/batch_stats_provider.dart';
 import '../models/batch_model.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../feed/providers/feed_provider.dart';
 import '../../notifications/notification_service.dart';
 import '../../transactions/providers/transactions_provider.dart';
 import '../../transactions/models/transaction_model.dart';
@@ -94,6 +95,8 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
             const SizedBox(height: 10),
             _SalesSummary(batchId: widget.batchId, filter: _filter),
             const SizedBox(height: 16),
+            _ExpensesList(batch: batch),
+            const SizedBox(height: 16),
             _CreditSalesList(batchId: widget.batchId),
           ],
         ),
@@ -104,12 +107,14 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
           if (v == 'sale') _showRecordSale(context, ref, batch);
           if (v == 'withdrawal') _showWithdrawal(context, ref, batch);
           if (v == 'credit_payment') _showCreditPayment(context, ref, batch);
+          if (v == 'mortality') _showMortality(context, ref, batch);
         },
         itemBuilder: (_) => const [
           PopupMenuItem(value: 'sale', child: Text('Record Sale')),
           PopupMenuItem(value: 'withdrawal', child: Text('Record Withdrawal')),
           PopupMenuItem(
               value: 'credit_payment', child: Text('Record Credit Payment')),
+          PopupMenuItem(value: 'mortality', child: Text('Record Mortality')),
         ],
       ),
     );
@@ -117,18 +122,28 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
 
   void _showRecordSale(BuildContext context, WidgetRef ref, Batch batch) {
     final qtyCtrl = TextEditingController();
-    final priceCtrl = TextEditingController();
+    final discountCtrl = TextEditingController();
     final creditorCtrl = TextEditingController();
+    final noteCtrl = TextEditingController();
     bool isCredit = false;
     DateTime creditDate = DateTime.now();
     DateTime expectedPaymentDate = DateTime.now().add(const Duration(days: 7));
     final formKey = GlobalKey<FormState>();
+    final stats = ref.read(batchStatsProvider(batch.id));
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Record Sale'),
         content: StatefulBuilder(builder: (c, setS) {
+          final qty = int.tryParse(qtyCtrl.text.trim()) ?? 0;
+          final grossCents = qty * batch.salePriceCents;
+          final discountCents = discountCtrl.text.trim().isEmpty
+              ? 0
+              : ((double.tryParse(discountCtrl.text.trim()) ?? 0) * 100)
+                  .round();
+          final netCents = (grossCents - discountCents).clamp(0, 1 << 31);
+
           return Form(
             key: formKey,
             child: SingleChildScrollView(
@@ -140,19 +155,54 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
                     decoration:
                         const InputDecoration(labelText: 'Quantity sold'),
                     keyboardType: TextInputType.number,
-                    validator: (v) => (v == null || int.tryParse(v) == null)
-                        ? 'Enter number'
-                        : null,
+                    onChanged: (_) => setS(() {}),
+                    validator: (v) {
+                      final qty = int.tryParse(v ?? '');
+                      if (qty == null) return 'Enter number';
+                      if (qty <= 0) return 'Enter quantity above 0';
+                      if (qty > stats.currentStock) {
+                        return 'Only ${stats.currentStock} in stock';
+                      }
+                      if (batch.salePriceCents <= 0) {
+                        return 'Set a sale price in Settings first';
+                      }
+                      return null;
+                    },
                   ),
+                  const SizedBox(height: 8),
                   TextFormField(
-                    controller: priceCtrl,
+                    controller: discountCtrl,
                     decoration: const InputDecoration(
-                        labelText: 'Total amount (e.g., 12.34)'),
+                        labelText: 'Discount amount (optional)'),
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
-                    validator: (v) => (v == null || double.tryParse(v) == null)
-                        ? 'Enter amount'
-                        : null,
+                    onChanged: (_) => setS(() {}),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return null;
+                      final amount = double.tryParse(v);
+                      if (amount == null) return 'Enter amount';
+                      if (amount < 0) return 'Must be 0 or more';
+                      if ((amount * 100).round() > grossCents) {
+                        return 'Discount cannot exceed sale total';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Price: \$${(batch.salePriceCents / 100).toStringAsFixed(2)} each\n'
+                      'Total: \$${(grossCents / 100).toStringAsFixed(2)}'
+                      '${discountCents > 0 ? ' - \$${(discountCents / 100).toStringAsFixed(2)} discount' : ''}'
+                      ' = \$${(netCents / 100).toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ),
+                  TextFormField(
+                    controller: noteCtrl,
+                    decoration:
+                        const InputDecoration(labelText: 'Note (optional)'),
                   ),
                   Row(
                     children: [
@@ -238,14 +288,20 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
             onPressed: () async {
               if (!formKey.currentState!.validate()) return;
               final qty = int.parse(qtyCtrl.text.trim());
-              final amountCents =
-                  (double.parse(priceCtrl.text.trim()) * 100).round();
+              final discountCents = discountCtrl.text.trim().isEmpty
+                  ? 0
+                  : (double.parse(discountCtrl.text.trim()) * 100).round();
+              final grossCents = qty * batch.salePriceCents;
+              final amountCents = grossCents - discountCents;
               Navigator.of(context).pop();
               await ref.read(transactionsProvider.notifier).recordSale(
                     batchId: batch.id,
                     quantity: qty,
                     totalAmountCents: amountCents,
                     isCredit: isCredit,
+                    discountCents: discountCents,
+                    unitSalePriceCents: batch.salePriceCents,
+                    note: noteCtrl.text.trim(),
                     creditorName: isCredit ? creditorCtrl.text.trim() : null,
                     creditDate: isCredit ? creditDate : null,
                     expectedPaymentDate: isCredit ? expectedPaymentDate : null,
@@ -260,6 +316,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
 
   void _showWithdrawal(BuildContext context, WidgetRef ref, Batch batch) {
     final amtCtrl = TextEditingController();
+    final noteCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
     showDialog(
       context: context,
@@ -267,14 +324,27 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
         title: const Text('Record Withdrawal'),
         content: Form(
           key: formKey,
-          child: TextFormField(
-            controller: amtCtrl,
-            decoration:
-                const InputDecoration(labelText: 'Amount (e.g., 12.34)'),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            validator: (v) => (v == null || double.tryParse(v) == null)
-                ? 'Enter amount'
-                : null,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: amtCtrl,
+                decoration:
+                    const InputDecoration(labelText: 'Amount (e.g., 12.34)'),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                validator: (v) => (v == null || double.tryParse(v) == null)
+                    ? 'Enter amount'
+                    : null,
+              ),
+              TextFormField(
+                controller: noteCtrl,
+                decoration: const InputDecoration(labelText: 'Description'),
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Enter description'
+                    : null,
+              ),
+            ],
           ),
         ),
         actions: [
@@ -291,6 +361,68 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
               await ref.read(transactionsProvider.notifier).recordWithdrawal(
                     batchId: batch.id,
                     amountCents: amountCents,
+                    note: noteCtrl.text.trim(),
+                  );
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMortality(BuildContext context, WidgetRef ref, Batch batch) {
+    final qtyCtrl = TextEditingController();
+    final noteCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final stats = ref.read(batchStatsProvider(batch.id));
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Record Mortality'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: qtyCtrl,
+                decoration:
+                    const InputDecoration(labelText: 'Number of chickens'),
+                keyboardType: TextInputType.number,
+                validator: (v) {
+                  final qty = int.tryParse(v ?? '');
+                  if (qty == null) return 'Enter number';
+                  if (qty <= 0) return 'Enter quantity above 0';
+                  if (qty > stats.currentStock) {
+                    return 'Only ${stats.currentStock} in stock';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: noteCtrl,
+                decoration:
+                    const InputDecoration(labelText: 'Cause or description'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              final qty = int.parse(qtyCtrl.text.trim());
+              Navigator.of(context).pop();
+              await ref.read(transactionsProvider.notifier).recordMortality(
+                    batchId: batch.id,
+                    quantity: qty,
+                    note: noteCtrl.text.trim(),
                   );
             },
             child: const Text('Save'),
@@ -455,6 +587,8 @@ class _BatchInfoCard extends StatelessWidget {
     required this.stats,
   });
 
+  String _money(int cents) => '\$${(cents / 100).toStringAsFixed(2)}';
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -475,6 +609,10 @@ class _BatchInfoCard extends StatelessWidget {
                             fontSize: 14, fontWeight: FontWeight.w600)),
                     Text(
                       'Started: ${AppDateUtils.formatDate(batch.startDate)}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    Text(
+                      'Sale price: ${_money(batch.salePriceCents)}',
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
@@ -499,20 +637,45 @@ class _BatchInfoCard extends StatelessWidget {
                 Expanded(
                   child: _StatTile(
                     label: 'Cash in hand',
-                    value:
-                        '\$${(stats.cashInHandCents / 100).toStringAsFixed(2)}',
+                    value: _money(stats.cashInHandCents),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: _StatTile(
                     label: 'Outstanding credit',
-                    value:
-                        '\$${(stats.outstandingCreditCents / 100).toStringAsFixed(2)}',
+                    value: _money(stats.outstandingCreditCents),
                     valueColor: Colors.orange,
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _StatTile(
+                    label: 'Expenses thus far',
+                    value: _money(stats.totalExpensesCents),
+                    valueColor: Colors.red.shade700,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _StatTile(
+                    label: 'Projected profit',
+                    value: _money(stats.projectedProfitCents),
+                    valueColor: stats.projectedProfitCents >= 0
+                        ? Colors.green.shade700
+                        : Colors.red.shade700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Stock ${_money(batch.stockCostCents)} | Feed ${_money(stats.feedCostCents)} | Withdrawals ${_money(stats.withdrawalCents)} | Discounts ${_money(stats.discountCents)}',
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
             ),
           ],
         ),
@@ -697,6 +860,155 @@ class _SummaryPill extends StatelessWidget {
                   fontSize: 22, fontWeight: FontWeight.w600, color: textColor)),
           Text('\$${(total / 100).toStringAsFixed(2)}',
               style: TextStyle(fontSize: 11, color: textColor)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExpensesList extends ConsumerWidget {
+  final Batch batch;
+  const _ExpensesList({required this.batch});
+
+  String _money(int cents) => '\$${(cents / 100).toStringAsFixed(2)}';
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final feedExpenses = ref
+        .watch(feedProvider)
+        .where((f) => f.batchId == batch.id && f.feedCostCents > 0)
+        .map(
+          (f) => _ExpenseRowData(
+            title: 'Feed',
+            subtitle: f.note.isNotEmpty ? f.note : '${f.feedAmount} feed',
+            amountCents: f.feedCostCents,
+            date: f.feedTime,
+          ),
+        );
+    final transactionExpenses = ref
+        .watch(transactionsProvider)
+        .where((t) =>
+            t.batchId == batch.id &&
+            (t.type == 'withdrawal' ||
+                t.type == 'expense' ||
+                t.type == 'discount'))
+        .map(
+          (t) => _ExpenseRowData(
+            title: t.type == 'discount'
+                ? 'Discount'
+                : t.type == 'withdrawal'
+                    ? 'Withdrawal'
+                    : 'Expense',
+            subtitle: t.note?.isNotEmpty == true ? t.note! : 'No description',
+            amountCents: t.amountCents,
+            date: t.date,
+          ),
+        );
+    final expenses = [
+      if (batch.stockCostCents > 0)
+        _ExpenseRowData(
+          title: 'Stock cost',
+          subtitle: '${batch.initialStock} chickens',
+          amountCents: batch.stockCostCents,
+          date: batch.startDate,
+        ),
+      ...feedExpenses,
+      ...transactionExpenses,
+    ]..sort((a, b) => b.date.compareTo(a.date));
+
+    if (expenses.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final total = expenses.fold(0, (sum, e) => sum + e.amountCents);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Expenses thus far',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  _money(total),
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ...expenses.take(6).map((e) => _ExpenseRow(data: e)),
+            if (expenses.length > 6)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  '+${expenses.length - 6} more',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExpenseRowData {
+  final String title;
+  final String subtitle;
+  final int amountCents;
+  final DateTime date;
+
+  const _ExpenseRowData({
+    required this.title,
+    required this.subtitle,
+    required this.amountCents,
+    required this.date,
+  });
+}
+
+class _ExpenseRow extends StatelessWidget {
+  final _ExpenseRowData data;
+  const _ExpenseRow({required this.data});
+
+  String _fmt(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(data.title,
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w500)),
+                Text(
+                  '${_fmt(data.date)} - ${data.subtitle}',
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '\$${(data.amountCents / 100).toStringAsFixed(2)}',
+            style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.red.shade700),
+          ),
         ],
       ),
     );
@@ -1060,6 +1372,8 @@ class _CreditSaleCard extends ConsumerWidget {
                 creditDate: creditDate,
                 expectedPaymentDate: expectedPaymentDate,
                 linkedCreditSaleId: transaction.linkedCreditSaleId,
+                discountCents: transaction.discountCents,
+                unitSalePriceCents: transaction.unitSalePriceCents,
               );
               Navigator.of(context).pop();
               await ref
