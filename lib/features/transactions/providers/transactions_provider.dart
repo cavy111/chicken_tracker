@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 import '../models/transaction_model.dart';
-import '../../batches/providers/batches_provider.dart';
+
 
 final transactionsProvider =
     StateNotifierProvider<TransactionsNotifier, List<TransactionModel>>((ref) {
@@ -24,9 +24,6 @@ class TransactionsNotifier extends StateNotifier<List<TransactionModel>> {
     final box = await Hive.openBox<TransactionModel>('transactions');
     await box.put(t.id, t);
     state = [...state, t];
-
-    // apply to batch (adjust stock, cash, credit)
-    await ref.read(batchesProvider.notifier).applyTransaction(t);
   }
 
   Future<void> recordSale({
@@ -108,4 +105,11 @@ class TransactionsNotifier extends StateNotifier<List<TransactionModel>> {
     );
     await addTransaction(t);
   }
+
+  Future<void> updateTransaction(TransactionModel t) async {
+  final box = await Hive.openBox<TransactionModel>('transactions');
+  await box.put(t.id, t);
+  state = state.map((x) => x.id == t.id ? t : x).toList();
+  // No applyTransaction — stats are derived live from batchStatsProvider
+}
 }
