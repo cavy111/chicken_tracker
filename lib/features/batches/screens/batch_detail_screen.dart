@@ -475,9 +475,11 @@ class _SalesSummary extends ConsumerWidget {
     final cashSales = txs.where((t) => t.type == 'sale').toList();
     final creditSales = txs.where((t) => t.type == 'credit_sale').toList();
 
+    final cashCount = cashSales.fold(0, (sum, t) => sum + (t.quantity ?? 1));
+    final creditCount = creditSales.fold(0, (sum, t) => sum + (t.quantity ?? 1));
+
     final cashTotal = cashSales.fold(0, (sum, t) => sum + t.amountCents);
     final creditTotal = creditSales.fold(0, (sum, t) => sum + t.amountCents);
-
     const labels = {
       SalesFilter.today: 'today',
       SalesFilter.thisWeek: 'this week',
@@ -499,7 +501,7 @@ class _SalesSummary extends ConsumerWidget {
                 Expanded(
                   child: _SummaryPill(
                     label: 'Cash sales',
-                    count: cashSales.length,
+                    count: cashCount,
                     total: cashTotal,
                     color: Colors.green.shade50,
                     textColor: Colors.green.shade800,
@@ -509,7 +511,7 @@ class _SalesSummary extends ConsumerWidget {
                 Expanded(
                   child: _SummaryPill(
                     label: 'Credit sales',
-                    count: creditSales.length,
+                    count: creditCount,
                     total: creditTotal,
                     color: Colors.orange.shade50,
                     textColor: Colors.orange.shade800,
@@ -548,11 +550,8 @@ class _SummaryPill extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: TextStyle(fontSize: 11, color: textColor)),
-          Text('$count',
-              style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
-                  color: textColor)),
+          Text('$count chicken${count == 1 ? '' : 's'}', 
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: textColor)),
           Text('\$${(total / 100).toStringAsFixed(2)}',
               style: TextStyle(fontSize: 11, color: textColor)),
         ],
