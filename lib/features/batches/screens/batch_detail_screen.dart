@@ -12,6 +12,22 @@ import '../../../shared/utils/date_utils.dart';
 
 enum SalesFilter { today, thisWeek, thisMonth, allTime }
 
+int _paidAmountForCredit(List<TransactionModel> txs, String creditSaleId) {
+  return txs
+      .where((t) =>
+          t.type == 'credit_payment' && t.linkedCreditSaleId == creditSaleId)
+      .fold(0, (sum, t) => sum + t.amountCents);
+}
+
+int _remainingAmountForCredit(
+  List<TransactionModel> txs,
+  TransactionModel creditSale,
+) {
+  final remaining =
+      creditSale.amountCents - _paidAmountForCredit(txs, creditSale.id);
+  return remaining.clamp(0, 1 << 31);
+}
+
 class BatchDetailScreen extends ConsumerStatefulWidget {
   final String batchId;
   const BatchDetailScreen({required this.batchId, super.key});
@@ -37,10 +53,14 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
     final ageDisplay = AppDateUtils.getBatchAge(batch.startDate);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (batchAgeInDays > 0 && batchAgeInDays % 7 == 0 && batchAgeInWeeks > 0) {
+      if (batchAgeInDays > 0 &&
+          batchAgeInDays % 7 == 0 &&
+          batchAgeInWeeks > 0) {
         NotificationService().showNotification(
-          title: '${batch.name} is now $batchAgeInWeeks week${batchAgeInWeeks == 1 ? '' : 's'} old',
-          body: 'Your batch has reached $ageDisplay old. Current stock: ${stats.currentStock}',
+          title:
+              '${batch.name} is now $batchAgeInWeeks week${batchAgeInWeeks == 1 ? '' : 's'} old',
+          body:
+              'Your batch has reached $ageDisplay old. Current stock: ${stats.currentStock}',
         );
       }
     });
@@ -88,7 +108,8 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
         itemBuilder: (_) => const [
           PopupMenuItem(value: 'sale', child: Text('Record Sale')),
           PopupMenuItem(value: 'withdrawal', child: Text('Record Withdrawal')),
-          PopupMenuItem(value: 'credit_payment', child: Text('Record Credit Payment')),
+          PopupMenuItem(
+              value: 'credit_payment', child: Text('Record Credit Payment')),
         ],
       ),
     );
@@ -116,17 +137,22 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
                 children: [
                   TextFormField(
                     controller: qtyCtrl,
-                    decoration: const InputDecoration(labelText: 'Quantity sold'),
+                    decoration:
+                        const InputDecoration(labelText: 'Quantity sold'),
                     keyboardType: TextInputType.number,
-                    validator: (v) =>
-                        (v == null || int.tryParse(v) == null) ? 'Enter number' : null,
+                    validator: (v) => (v == null || int.tryParse(v) == null)
+                        ? 'Enter number'
+                        : null,
                   ),
                   TextFormField(
                     controller: priceCtrl,
-                    decoration: const InputDecoration(labelText: 'Total amount (e.g., 12.34)'),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    validator: (v) =>
-                        (v == null || double.tryParse(v) == null) ? 'Enter amount' : null,
+                    decoration: const InputDecoration(
+                        labelText: 'Total amount (e.g., 12.34)'),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    validator: (v) => (v == null || double.tryParse(v) == null)
+                        ? 'Enter amount'
+                        : null,
                   ),
                   Row(
                     children: [
@@ -141,15 +167,18 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
                     const Divider(),
                     TextFormField(
                       controller: creditorCtrl,
-                      decoration: const InputDecoration(labelText: 'Creditor name'),
-                      validator: (v) => (isCredit && (v == null || v.trim().isEmpty))
-                          ? 'Enter creditor name'
-                          : null,
+                      decoration:
+                          const InputDecoration(labelText: 'Creditor name'),
+                      validator: (v) =>
+                          (isCredit && (v == null || v.trim().isEmpty))
+                              ? 'Enter creditor name'
+                              : null,
                     ),
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        const Text('Credit date: ', style: TextStyle(fontSize: 13)),
+                        const Text('Credit date: ',
+                            style: TextStyle(fontSize: 13)),
                         TextButton(
                           child: Text(
                             '${creditDate.year}-${creditDate.month.toString().padLeft(2, '0')}-${creditDate.day.toString().padLeft(2, '0')}',
@@ -169,7 +198,8 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
                     ),
                     Row(
                       children: [
-                        const Text('Due date: ', style: TextStyle(fontSize: 13)),
+                        const Text('Due date: ',
+                            style: TextStyle(fontSize: 13)),
                         TextButton(
                           child: Text(
                             '${expectedPaymentDate.year}-${expectedPaymentDate.month.toString().padLeft(2, '0')}-${expectedPaymentDate.day.toString().padLeft(2, '0')}',
@@ -182,7 +212,9 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
                               firstDate: DateTime.now(),
                               lastDate: DateTime(2100),
                             );
-                            if (picked != null) setS(() => expectedPaymentDate = picked);
+                            if (picked != null) {
+                              setS(() => expectedPaymentDate = picked);
+                            }
                           },
                         ),
                       ],
@@ -206,7 +238,8 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
             onPressed: () async {
               if (!formKey.currentState!.validate()) return;
               final qty = int.parse(qtyCtrl.text.trim());
-              final amountCents = (double.parse(priceCtrl.text.trim()) * 100).round();
+              final amountCents =
+                  (double.parse(priceCtrl.text.trim()) * 100).round();
               Navigator.of(context).pop();
               await ref.read(transactionsProvider.notifier).recordSale(
                     batchId: batch.id,
@@ -236,10 +269,12 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
           key: formKey,
           child: TextFormField(
             controller: amtCtrl,
-            decoration: const InputDecoration(labelText: 'Amount (e.g., 12.34)'),
-            keyboardType: TextInputType.numberWithOptions(decimal: true),
-            validator: (v) =>
-                (v == null || double.tryParse(v) == null) ? 'Enter amount' : null,
+            decoration:
+                const InputDecoration(labelText: 'Amount (e.g., 12.34)'),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            validator: (v) => (v == null || double.tryParse(v) == null)
+                ? 'Enter amount'
+                : null,
           ),
         ),
         actions: [
@@ -250,7 +285,8 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
           ElevatedButton(
             onPressed: () async {
               if (!formKey.currentState!.validate()) return;
-              final amountCents = (double.parse(amtCtrl.text.trim()) * 100).round();
+              final amountCents =
+                  (double.parse(amtCtrl.text.trim()) * 100).round();
               Navigator.of(context).pop();
               await ref.read(transactionsProvider.notifier).recordWithdrawal(
                     batchId: batch.id,
@@ -267,20 +303,116 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
   void _showCreditPayment(BuildContext context, WidgetRef ref, Batch batch) {
     final amtCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    final transactions = ref.read(transactionsProvider);
+    final openCredits = transactions
+        .where((t) => t.batchId == batch.id && t.type == 'credit_sale')
+        .where((t) => _remainingAmountForCredit(transactions, t) > 0)
+        .toList()
+      ..sort((a, b) => (a.expectedPaymentDate ?? DateTime(9999))
+          .compareTo(b.expectedPaymentDate ?? DateTime(9999)));
+
+    if (openCredits.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No open credit sales to pay')),
+      );
+      return;
+    }
+
+    String selectedCreditId = openCredits.first.id;
+    bool payInFull = false;
+
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Record Credit Payment'),
-        content: Form(
-          key: formKey,
-          child: TextFormField(
-            controller: amtCtrl,
-            decoration: const InputDecoration(labelText: 'Amount (e.g., 12.34)'),
-            keyboardType: TextInputType.numberWithOptions(decimal: true),
-            validator: (v) =>
-                (v == null || double.tryParse(v) == null) ? 'Enter amount' : null,
-          ),
-        ),
+        content: StatefulBuilder(builder: (c, setS) {
+          final selectedCredit =
+              openCredits.firstWhere((t) => t.id == selectedCreditId);
+          final remaining =
+              _remainingAmountForCredit(transactions, selectedCredit);
+          final paid = _paidAmountForCredit(transactions, selectedCredit.id);
+
+          return Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedCreditId,
+                    decoration:
+                        const InputDecoration(labelText: 'Credit being paid'),
+                    items: openCredits.map((t) {
+                      final balance =
+                          _remainingAmountForCredit(transactions, t);
+                      final name = t.creditorName?.isNotEmpty == true
+                          ? t.creditorName!
+                          : 'Unknown';
+                      return DropdownMenuItem(
+                        value: t.id,
+                        child: Text(
+                          '$name - \$${(balance / 100).toStringAsFixed(2)} left',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setS(() {
+                        selectedCreditId = value;
+                        amtCtrl.clear();
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Original: \$${(selectedCredit.amountCents / 100).toStringAsFixed(2)}  '
+                    'Paid: \$${(paid / 100).toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Pay full remaining balance'),
+                    value: payInFull,
+                    onChanged: (value) {
+                      setS(() {
+                        payInFull = value;
+                        if (payInFull) {
+                          amtCtrl.text = (remaining / 100).toStringAsFixed(2);
+                        } else {
+                          amtCtrl.clear();
+                        }
+                      });
+                    },
+                  ),
+                  TextFormField(
+                    controller: amtCtrl,
+                    enabled: !payInFull,
+                    decoration: InputDecoration(
+                      labelText: 'Payment amount',
+                      hintText: (remaining / 100).toStringAsFixed(2),
+                    ),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    validator: (v) {
+                      if (payInFull) return null;
+                      final amount = double.tryParse(v ?? '');
+                      if (amount == null) return 'Enter amount';
+                      final cents = (amount * 100).round();
+                      if (cents <= 0) return 'Enter amount above 0';
+                      if (cents > remaining) {
+                        return 'Amount is more than the remaining balance';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -289,10 +421,17 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
           ElevatedButton(
             onPressed: () async {
               if (!formKey.currentState!.validate()) return;
-              final amountCents = (double.parse(amtCtrl.text.trim()) * 100).round();
+              final selectedCredit =
+                  openCredits.firstWhere((t) => t.id == selectedCreditId);
+              final remaining =
+                  _remainingAmountForCredit(transactions, selectedCredit);
+              final amountCents = payInFull
+                  ? remaining
+                  : (double.parse(amtCtrl.text.trim()) * 100).round();
               Navigator.of(context).pop();
               await ref.read(transactionsProvider.notifier).recordCreditPayment(
                     batchId: batch.id,
+                    creditSaleId: selectedCredit.id,
                     amountCents: amountCents,
                   );
             },
@@ -393,7 +532,10 @@ class _StatTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+        color: Theme.of(context)
+            .colorScheme
+            .surfaceContainerHighest
+            .withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -459,8 +601,7 @@ class _SalesSummary extends ConsumerWidget {
         date.year == now.year && date.month == now.month && date.day == now.day,
       SalesFilter.thisWeek =>
         date.isAfter(now.subtract(const Duration(days: 7))),
-      SalesFilter.thisMonth =>
-        date.year == now.year && date.month == now.month,
+      SalesFilter.thisMonth => date.year == now.year && date.month == now.month,
       SalesFilter.allTime => true,
     };
   }
@@ -476,7 +617,8 @@ class _SalesSummary extends ConsumerWidget {
     final creditSales = txs.where((t) => t.type == 'credit_sale').toList();
 
     final cashCount = cashSales.fold(0, (sum, t) => sum + (t.quantity ?? 1));
-    final creditCount = creditSales.fold(0, (sum, t) => sum + (t.quantity ?? 1));
+    final creditCount =
+        creditSales.fold(0, (sum, t) => sum + (t.quantity ?? 1));
 
     final cashTotal = cashSales.fold(0, (sum, t) => sum + t.amountCents);
     final creditTotal = creditSales.fold(0, (sum, t) => sum + t.amountCents);
@@ -550,8 +692,9 @@ class _SummaryPill extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: TextStyle(fontSize: 11, color: textColor)),
-          Text('$count chicken${count == 1 ? '' : 's'}', 
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: textColor)),
+          Text('$count chicken${count == 1 ? '' : 's'}',
+              style: TextStyle(
+                  fontSize: 22, fontWeight: FontWeight.w600, color: textColor)),
           Text('\$${(total / 100).toStringAsFixed(2)}',
               style: TextStyle(fontSize: 11, color: textColor)),
         ],
@@ -568,9 +711,10 @@ class _CreditSalesList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final credits = ref
-        .watch(transactionsProvider)
+    final txs = ref.watch(transactionsProvider);
+    final credits = txs
         .where((t) => t.batchId == batchId && t.type == 'credit_sale')
+        .where((t) => _remainingAmountForCredit(txs, t) > 0)
         .toList()
       ..sort((a, b) => (a.expectedPaymentDate ?? DateTime(9999))
           .compareTo(b.expectedPaymentDate ?? DateTime(9999)));
@@ -579,8 +723,8 @@ class _CreditSalesList extends ConsumerWidget {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
         child: Center(
-            child: Text('No credit sales',
-                style: TextStyle(color: Colors.grey))),
+            child:
+                Text('No credit sales', style: TextStyle(color: Colors.grey))),
       );
     }
 
@@ -616,15 +760,28 @@ class _CreditSaleCard extends ConsumerWidget {
   String _fmt(DateTime? d) => d == null
       ? '—'
       : '${d.day} ${[
-          'Jan','Feb','Mar','Apr','May','Jun',
-          'Jul','Aug','Sep','Oct','Nov','Dec'
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec'
         ][d.month - 1]}';
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final txs = ref.watch(transactionsProvider);
+    final paid = _paidAmountForCredit(txs, transaction.id);
+    final remaining = _remainingAmountForCredit(txs, transaction);
     final now = DateTime.now();
     final due = transaction.expectedPaymentDate;
-    final daysUntilDue = due != null ? due.difference(now).inDays : null;
+    final daysUntilDue = due?.difference(now).inDays;
     final isOverdue = daysUntilDue != null && daysUntilDue < 0;
     final isDueSoon =
         daysUntilDue != null && daysUntilDue >= 0 && daysUntilDue <= 3;
@@ -655,109 +812,132 @@ class _CreditSaleCard extends ConsumerWidget {
             ? Colors.orange.shade800
             : Colors.grey.shade700;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        border: Border(
-          left: BorderSide(color: borderColor, width: 3),
-          top: BorderSide(color: Colors.grey.shade200, width: 0.5),
-          right: BorderSide(color: Colors.grey.shade200, width: 0.5),
-          bottom: BorderSide(color: Colors.grey.shade200, width: 0.5),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade200, width: 0.5),
+          borderRadius: BorderRadius.circular(10),
         ),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: IntrinsicHeight(
+          child: Row(
             children: [
+              // Colored left bar
+              Container(width: 4, color: borderColor),
+              // Card content
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      transaction.creditorName?.isNotEmpty == true
-                          ? transaction.creditorName!
-                          : 'Unknown',
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w600),
-                    ),
-                    if (transaction.quantity != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 3),
-                        child: Text(
-                          '${transaction.quantity} chickens',
-                          style:
-                              const TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
+                child: Container(
+                  color: Theme.of(context).cardColor,
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  transaction.creditorName?.isNotEmpty == true
+                                      ? transaction.creditorName!
+                                      : 'Unknown',
+                                  style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                                if (transaction.quantity != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 3),
+                                    child: Text(
+                                      '${transaction.quantity} chickens',
+                                      style: const TextStyle(
+                                          fontSize: 12, color: Colors.grey),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                '\$${(remaining / 100).toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                    fontSize: 15, fontWeight: FontWeight.w600),
+                              ),
+                              Text(
+                                paid > 0
+                                    ? '\$${(paid / 100).toStringAsFixed(2)} paid'
+                                    : '\$${(transaction.amountCents / 100).toStringAsFixed(2)} total',
+                                style: const TextStyle(
+                                    fontSize: 11, color: Colors.grey),
+                              ),
+                              const SizedBox(height: 4),
+                              if (badgeText.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: badgeColor,
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(badgeText,
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: badgeTextColor)),
+                                ),
+                            ],
+                          ),
+                        ],
                       ),
-                  ],
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(Icons.calendar_today_outlined,
+                              size: 13, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Text('Sold ${_fmt(transaction.creditDate)}',
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.grey)),
+                          const SizedBox(width: 16),
+                          const Icon(Icons.schedule_outlined,
+                              size: 13, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Text('Due ${_fmt(due)}',
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.grey)),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () => _showEditDialog(context, ref),
+                            child: const Icon(Icons.edit_outlined,
+                                size: 16, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '\$${(transaction.amountCents / 100).toStringAsFixed(2)}',
-                    style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
-                  if (badgeText.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: badgeColor,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(badgeText,
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: badgeTextColor)),
-                    ),
-                ],
-              ),
             ],
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.calendar_today_outlined,
-                  size: 13, color: Colors.grey),
-              const SizedBox(width: 4),
-              Text('Sold ${_fmt(transaction.creditDate)}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              const SizedBox(width: 16),
-              const Icon(Icons.schedule_outlined,
-                  size: 13, color: Colors.grey),
-              const SizedBox(width: 4),
-              Text('Due ${_fmt(due)}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              const Spacer(),
-              GestureDetector(
-                onTap: () => _showEditDialog(context, ref),
-                child: const Icon(Icons.edit_outlined,
-                    size: 16, color: Colors.grey),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
 
   void _showEditDialog(BuildContext context, WidgetRef ref) {
-    final creditorCtrl = TextEditingController(
-        text: transaction.creditorName ?? '');
+    final paid =
+        _paidAmountForCredit(ref.read(transactionsProvider), transaction.id);
+    final creditorCtrl =
+        TextEditingController(text: transaction.creditorName ?? '');
     final amountCtrl = TextEditingController(
         text: (transaction.amountCents / 100).toStringAsFixed(2));
-    final qtyCtrl = TextEditingController(
-        text: transaction.quantity?.toString() ?? '');
+    final qtyCtrl =
+        TextEditingController(text: transaction.quantity?.toString() ?? '');
     DateTime creditDate = transaction.creditDate ?? DateTime.now();
     DateTime expectedPaymentDate = transaction.expectedPaymentDate ??
         DateTime.now().add(const Duration(days: 7));
@@ -784,24 +964,26 @@ class _CreditSaleCard extends ConsumerWidget {
                   ),
                   TextFormField(
                     controller: qtyCtrl,
-                    decoration:
-                        const InputDecoration(labelText: 'Quantity'),
+                    decoration: const InputDecoration(labelText: 'Quantity'),
                     keyboardType: TextInputType.number,
-                    validator: (v) =>
-                        (v == null || int.tryParse(v) == null)
-                            ? 'Enter number'
-                            : null,
+                    validator: (v) => (v == null || int.tryParse(v) == null)
+                        ? 'Enter number'
+                        : null,
                   ),
                   TextFormField(
                     controller: amountCtrl,
-                    decoration:
-                        const InputDecoration(labelText: 'Amount (e.g., 12.34)'),
+                    decoration: const InputDecoration(
+                        labelText: 'Amount (e.g., 12.34)'),
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
-                    validator: (v) =>
-                        (v == null || double.tryParse(v) == null)
-                            ? 'Enter amount'
-                            : null,
+                    validator: (v) {
+                      final amount = double.tryParse(v ?? '');
+                      if (amount == null) return 'Enter amount';
+                      if ((amount * 100).round() < paid) {
+                        return 'Amount cannot be less than payments already made';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -827,8 +1009,7 @@ class _CreditSaleCard extends ConsumerWidget {
                   ),
                   Row(
                     children: [
-                      const Text('Due date: ',
-                          style: TextStyle(fontSize: 13)),
+                      const Text('Due date: ', style: TextStyle(fontSize: 13)),
                       TextButton(
                         child: Text(
                           '${expectedPaymentDate.year}-${expectedPaymentDate.month.toString().padLeft(2, '0')}-${expectedPaymentDate.day.toString().padLeft(2, '0')}',
@@ -878,6 +1059,7 @@ class _CreditSaleCard extends ConsumerWidget {
                 creditorName: creditorCtrl.text.trim(),
                 creditDate: creditDate,
                 expectedPaymentDate: expectedPaymentDate,
+                linkedCreditSaleId: transaction.linkedCreditSaleId,
               );
               Navigator.of(context).pop();
               await ref

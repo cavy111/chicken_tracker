@@ -3,7 +3,6 @@ import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 import '../models/transaction_model.dart';
 
-
 final transactionsProvider =
     StateNotifierProvider<TransactionsNotifier, List<TransactionModel>>((ref) {
   return TransactionsNotifier(ref);
@@ -27,14 +26,14 @@ class TransactionsNotifier extends StateNotifier<List<TransactionModel>> {
   }
 
   Future<void> recordSale({
-  required String batchId,
-  required int quantity,
-  required int totalAmountCents,
-  required bool isCredit,
-  String? note,
-  String? creditorName,
-  DateTime? creditDate,
-  DateTime? expectedPaymentDate,
+    required String batchId,
+    required int quantity,
+    required int totalAmountCents,
+    required bool isCredit,
+    String? note,
+    String? creditorName,
+    DateTime? creditDate,
+    DateTime? expectedPaymentDate,
   }) async {
     final id = const Uuid().v4();
     final now = DateTime.now();
@@ -85,6 +84,7 @@ class TransactionsNotifier extends StateNotifier<List<TransactionModel>> {
 
   Future<void> recordCreditPayment({
     required String batchId,
+    required String creditSaleId,
     required int amountCents,
     String? note,
   }) async {
@@ -102,14 +102,15 @@ class TransactionsNotifier extends StateNotifier<List<TransactionModel>> {
       userId: null,
       createdAt: now,
       updatedAt: now,
+      linkedCreditSaleId: creditSaleId,
     );
     await addTransaction(t);
   }
 
   Future<void> updateTransaction(TransactionModel t) async {
-  final box = await Hive.openBox<TransactionModel>('transactions');
-  await box.put(t.id, t);
-  state = state.map((x) => x.id == t.id ? t : x).toList();
-  // No applyTransaction — stats are derived live from batchStatsProvider
-}
+    final box = await Hive.openBox<TransactionModel>('transactions');
+    await box.put(t.id, t);
+    state = state.map((x) => x.id == t.id ? t : x).toList();
+    // No applyTransaction — stats are derived live from batchStatsProvider
+  }
 }

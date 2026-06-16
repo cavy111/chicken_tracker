@@ -34,6 +34,8 @@ class TransactionModel {
   final DateTime? creditDate;
   @HiveField(13)
   final DateTime? expectedPaymentDate;
+  @HiveField(14)
+  final String? linkedCreditSaleId;
 
   TransactionModel({
     required this.id,
@@ -50,5 +52,6 @@ class TransactionModel {
     this.creditorName,
     this.creditDate,
     this.expectedPaymentDate,
+    this.linkedCreditSaleId,
   });
 }
