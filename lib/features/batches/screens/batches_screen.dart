@@ -6,6 +6,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/utils/date_utils.dart';
 import '../../../shared/widgets/batch_edit_dialog.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 
 class BatchesScreen extends ConsumerWidget {
   const BatchesScreen({super.key});
@@ -70,22 +71,7 @@ class BatchesScreen extends ConsumerWidget {
         onPressed: () => showBatchEditDialog(context, ref, userId: auth.userId),
         child: const Icon(Icons.add),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.egg), label: 'Batches'),
-          BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Feed'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
-        ],
-        onTap: (index) {
-          if (index == 1) {
-            context.go('/feed');
-          } else if (index == 2) {
-            context.go('/settings');
-          }
-        },
-      ),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 0),
     );
   }
 }

@@ -102,6 +102,55 @@ class TransactionsNotifier extends StateNotifier<List<TransactionModel>> {
     await addTransaction(t);
   }
 
+  Future<void> recordLivestockWithdrawal({
+    required String batchId,
+    required int quantity,
+    required int amountCents,
+    String? note,
+  }) async {
+    final id = const Uuid().v4();
+    final now = DateTime.now();
+    final t = TransactionModel(
+      id: id,
+      batchId: batchId,
+      type: 'livestock_withdrawal',
+      amountCents: amountCents,
+      quantity: quantity,
+      isCredit: false,
+      note: note,
+      date: now,
+      userId: null,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await addTransaction(t);
+  }
+
+  Future<void> recordWithdrawalRepayment({
+    required String batchId,
+    required String withdrawalId,
+    required int amountCents,
+    String? note,
+  }) async {
+    final id = const Uuid().v4();
+    final now = DateTime.now();
+    final t = TransactionModel(
+      id: id,
+      batchId: batchId,
+      type: 'withdrawal_repayment',
+      amountCents: amountCents,
+      quantity: null,
+      isCredit: false,
+      note: note,
+      date: now,
+      userId: null,
+      createdAt: now,
+      updatedAt: now,
+      linkedCreditSaleId: withdrawalId,
+    );
+    await addTransaction(t);
+  }
+
   Future<void> recordMortality({
     required String batchId,
     required int quantity,

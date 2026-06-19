@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../batches/providers/batches_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../shared/widgets/batch_edit_dialog.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -52,23 +53,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 2,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.egg), label: 'Batches'),
-          BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Feed'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.settings), label: 'Settings'),
-        ],
-        onTap: (index) {
-          if (index == 0) {
-            context.go('/batches');
-          } else if (index == 1) {
-            context.go('/feed');
-          }
-        },
-      ),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 3),
     );
   }
 }

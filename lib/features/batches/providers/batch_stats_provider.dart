@@ -3,6 +3,7 @@ import '../../feed/models/feed_model.dart';
 import '../../feed/providers/feed_provider.dart';
 import '../../transactions/models/transaction_model.dart';
 import '../../transactions/providers/transactions_provider.dart';
+import '../../transactions/withdrawal_utils.dart';
 import '../models/batch_model.dart';
 import '../providers/batches_provider.dart';
 
@@ -14,6 +15,7 @@ class BatchStats {
   final int creditSaleCount;
   final int feedCostCents;
   final int withdrawalCents;
+  final int outstandingWithdrawalCents;
   final int discountCents;
   final int totalExpensesCents;
   final int projectedRevenueCents;
@@ -27,6 +29,7 @@ class BatchStats {
     required this.creditSaleCount,
     required this.feedCostCents,
     required this.withdrawalCents,
+    required this.outstandingWithdrawalCents,
     required this.discountCents,
     required this.totalExpensesCents,
     required this.projectedRevenueCents,
@@ -76,15 +79,24 @@ BatchStats computeStats(
       case 'mortality':
         stock -= t.quantity ?? 0;
         break;
+      case 'livestock_withdrawal':
+        stock -= t.quantity ?? 0;
+        withdrawal += t.amountCents;
+        break;
       case 'withdrawal':
       case 'expense':
         cash -= t.amountCents;
         withdrawal += t.amountCents;
         break;
+      case 'withdrawal_repayment':
+        cash += t.amountCents;
+        withdrawal -= t.amountCents;
+        break;
     }
   }
 
   final currentStock = stock.clamp(0, 1 << 31);
+  final outstandingWithdrawals = totalOutstandingWithdrawals(txs);
   final totalExpenses = batch.stockCostCents + feedCost + withdrawal + discount;
   final projectedRevenue = grossSales + (currentStock * batch.salePriceCents);
 
@@ -96,6 +108,7 @@ BatchStats computeStats(
     creditSaleCount: creditSaleCount,
     feedCostCents: feedCost,
     withdrawalCents: withdrawal,
+    outstandingWithdrawalCents: outstandingWithdrawals,
     discountCents: discount,
     totalExpensesCents: totalExpenses,
     projectedRevenueCents: projectedRevenue,

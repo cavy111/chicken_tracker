@@ -8,6 +8,7 @@ import '../../batches/providers/batches_provider.dart';
 import '../../batches/models/batch_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../notifications/notification_service.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
   const FeedScreen({super.key});
@@ -88,23 +89,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         onPressed: () => _showAddFeedDialog(context, ref, batches),
         child: const Icon(Icons.add),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 1,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.egg), label: 'Batches'),
-          BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Feed'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.settings), label: 'Settings'),
-        ],
-        onTap: (index) {
-          if (index == 0) {
-            context.go('/batches');
-          } else if (index == 2) {
-            context.go('/settings');
-          }
-        },
-      ),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 1),
     );
   }
 

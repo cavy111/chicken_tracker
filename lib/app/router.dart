@@ -5,6 +5,7 @@ import '../features/batches/screens/batches_screen.dart';
 import '../features/feed/screens/feed_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
 import '../features/batches/screens/batch_detail_screen.dart';
+import '../features/transactions/screens/withdrawals_screen.dart';
 import '../features/auth/providers/auth_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -40,6 +41,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/feed',
         builder: (context, state) => const FeedScreen(),
+      ),
+      GoRoute(
+        path: '/withdrawals',
+        builder: (context, state) => const WithdrawalsScreen(),
       ),
       GoRoute(
         path: '/settings',

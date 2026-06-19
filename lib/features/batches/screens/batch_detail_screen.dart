@@ -9,6 +9,7 @@ import '../../feed/providers/feed_provider.dart';
 import '../../notifications/notification_service.dart';
 import '../../transactions/providers/transactions_provider.dart';
 import '../../transactions/models/transaction_model.dart';
+import '../../transactions/withdrawal_utils.dart';
 import '../../../shared/utils/date_utils.dart';
 
 enum SalesFilter { today, thisWeek, thisMonth, allTime }
@@ -97,6 +98,12 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
             const SizedBox(height: 16),
             _ExpensesList(batch: batch),
             const SizedBox(height: 16),
+            _WithdrawalsList(
+              batchId: widget.batchId,
+              onRepay: (withdrawal) =>
+                  _showWithdrawalRepayment(context, ref, batch, withdrawal),
+            ),
+            const SizedBox(height: 16),
             _CreditSalesList(batchId: widget.batchId),
           ],
         ),
@@ -106,12 +113,18 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
         onSelected: (v) {
           if (v == 'sale') _showRecordSale(context, ref, batch);
           if (v == 'withdrawal') _showWithdrawal(context, ref, batch);
+          if (v == 'withdrawal_repayment') {
+            _showWithdrawalRepayment(context, ref, batch, null);
+          }
           if (v == 'credit_payment') _showCreditPayment(context, ref, batch);
           if (v == 'mortality') _showMortality(context, ref, batch);
         },
         itemBuilder: (_) => const [
           PopupMenuItem(value: 'sale', child: Text('Record Sale')),
           PopupMenuItem(value: 'withdrawal', child: Text('Record Withdrawal')),
+          PopupMenuItem(
+              value: 'withdrawal_repayment',
+              child: Text('Pay Back Withdrawal')),
           PopupMenuItem(
               value: 'credit_payment', child: Text('Record Credit Payment')),
           PopupMenuItem(value: 'mortality', child: Text('Record Mortality')),
@@ -316,37 +329,88 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
 
   void _showWithdrawal(BuildContext context, WidgetRef ref, Batch batch) {
     final amtCtrl = TextEditingController();
+    final qtyCtrl = TextEditingController();
     final noteCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    bool isLivestock = false;
+    final stats = ref.read(batchStatsProvider(batch.id));
+
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Record Withdrawal'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: amtCtrl,
-                decoration:
-                    const InputDecoration(labelText: 'Amount (e.g., 12.34)'),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                validator: (v) => (v == null || double.tryParse(v) == null)
-                    ? 'Enter amount'
-                    : null,
+        content: StatefulBuilder(builder: (c, setS) {
+          final qty = int.tryParse(qtyCtrl.text.trim()) ?? 0;
+          final valueCents = isLivestock ? qty * batch.salePriceCents : 0;
+
+          return Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Livestock for personal use'),
+                    subtitle: const Text('Removes chickens from stock instead of cash'),
+                    value: isLivestock,
+                    onChanged: (value) => setS(() => isLivestock = value),
+                  ),
+                  if (isLivestock) ...[
+                    TextFormField(
+                      controller: qtyCtrl,
+                      decoration:
+                          const InputDecoration(labelText: 'Quantity'),
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) => setS(() {}),
+                      validator: (v) {
+                        final qty = int.tryParse(v ?? '');
+                        if (qty == null) return 'Enter number';
+                        if (qty <= 0) return 'Enter quantity above 0';
+                        if (qty > stats.currentStock) {
+                          return 'Only ${stats.currentStock} in stock';
+                        }
+                        if (batch.salePriceCents <= 0) {
+                          return 'Set a sale price in Settings first';
+                        }
+                        return null;
+                      },
+                    ),
+                    if (qty > 0 && batch.salePriceCents > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Value at sale price: \$${(valueCents / 100).toStringAsFixed(2)}',
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                  ] else
+                    TextFormField(
+                      controller: amtCtrl,
+                      decoration: const InputDecoration(
+                          labelText: 'Amount (e.g., 12.34)'),
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true),
+                      validator: (v) => (v == null || double.tryParse(v) == null)
+                          ? 'Enter amount'
+                          : null,
+                    ),
+                  TextFormField(
+                    controller: noteCtrl,
+                    decoration: const InputDecoration(labelText: 'Description'),
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Enter description'
+                        : null,
+                  ),
+                ],
               ),
-              TextFormField(
-                controller: noteCtrl,
-                decoration: const InputDecoration(labelText: 'Description'),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Enter description'
-                    : null,
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        }),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -355,13 +419,175 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
           ElevatedButton(
             onPressed: () async {
               if (!formKey.currentState!.validate()) return;
-              final amountCents =
-                  (double.parse(amtCtrl.text.trim()) * 100).round();
               Navigator.of(context).pop();
-              await ref.read(transactionsProvider.notifier).recordWithdrawal(
+              if (isLivestock) {
+                final qty = int.parse(qtyCtrl.text.trim());
+                final amountCents = qty * batch.salePriceCents;
+                await ref
+                    .read(transactionsProvider.notifier)
+                    .recordLivestockWithdrawal(
+                      batchId: batch.id,
+                      quantity: qty,
+                      amountCents: amountCents,
+                      note: noteCtrl.text.trim(),
+                    );
+              } else {
+                final amountCents =
+                    (double.parse(amtCtrl.text.trim()) * 100).round();
+                await ref.read(transactionsProvider.notifier).recordWithdrawal(
+                      batchId: batch.id,
+                      amountCents: amountCents,
+                      note: noteCtrl.text.trim(),
+                    );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showWithdrawalRepayment(
+    BuildContext context,
+    WidgetRef ref,
+    Batch batch,
+    TransactionModel? preselected,
+  ) {
+    final amtCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final transactions = ref.read(transactionsProvider);
+    final openWithdrawals = transactions
+        .where((t) => t.batchId == batch.id && isWithdrawalTransaction(t))
+        .where((t) => remainingWithdrawalAmount(transactions, t) > 0)
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    if (openWithdrawals.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No open withdrawals to pay back')),
+      );
+      return;
+    }
+
+    String selectedWithdrawalId = preselected?.id ?? openWithdrawals.first.id;
+    bool payInFull = false;
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Pay Back Withdrawal'),
+        content: StatefulBuilder(builder: (c, setS) {
+          final selectedWithdrawal = openWithdrawals
+              .firstWhere((t) => t.id == selectedWithdrawalId);
+          final remaining =
+              remainingWithdrawalAmount(transactions, selectedWithdrawal);
+          final repaid =
+              repaidAmountForWithdrawal(transactions, selectedWithdrawal.id);
+
+          return Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedWithdrawalId,
+                    decoration:
+                        const InputDecoration(labelText: 'Withdrawal'),
+                    items: openWithdrawals.map((t) {
+                      final balance =
+                          remainingWithdrawalAmount(transactions, t);
+                      final label = t.note?.isNotEmpty == true
+                          ? t.note!
+                          : withdrawalTypeLabel(t);
+                      return DropdownMenuItem(
+                        value: t.id,
+                        child: Text(
+                          '$label - \$${(balance / 100).toStringAsFixed(2)} left',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setS(() {
+                        selectedWithdrawalId = value;
+                        amtCtrl.clear();
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Original: \$${(selectedWithdrawal.amountCents / 100).toStringAsFixed(2)}  '
+                    'Repaid: \$${(repaid / 100).toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Pay full remaining balance'),
+                    value: payInFull,
+                    onChanged: (value) {
+                      setS(() {
+                        payInFull = value;
+                        if (payInFull) {
+                          amtCtrl.text = (remaining / 100).toStringAsFixed(2);
+                        } else {
+                          amtCtrl.clear();
+                        }
+                      });
+                    },
+                  ),
+                  TextFormField(
+                    controller: amtCtrl,
+                    enabled: !payInFull,
+                    decoration: InputDecoration(
+                      labelText: 'Repayment amount',
+                      hintText: (remaining / 100).toStringAsFixed(2),
+                    ),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    validator: (v) {
+                      if (payInFull) return null;
+                      final amount = double.tryParse(v ?? '');
+                      if (amount == null) return 'Enter amount';
+                      final cents = (amount * 100).round();
+                      if (cents <= 0) return 'Enter amount above 0';
+                      if (cents > remaining) {
+                        return 'Amount is more than the remaining balance';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              final selectedWithdrawal = openWithdrawals
+                  .firstWhere((t) => t.id == selectedWithdrawalId);
+              final remaining =
+                  remainingWithdrawalAmount(transactions, selectedWithdrawal);
+              final amountCents = payInFull
+                  ? remaining
+                  : (double.parse(amtCtrl.text.trim()) * 100).round();
+              Navigator.of(context).pop();
+              await ref
+                  .read(transactionsProvider.notifier)
+                  .recordWithdrawalRepayment(
                     batchId: batch.id,
+                    withdrawalId: selectedWithdrawal.id,
                     amountCents: amountCents,
-                    note: noteCtrl.text.trim(),
                   );
             },
             child: const Text('Save'),
@@ -677,6 +903,15 @@ class _BatchInfoCard extends StatelessWidget {
               'Stock ${_money(batch.stockCostCents)} | Feed ${_money(stats.feedCostCents)} | Withdrawals ${_money(stats.withdrawalCents)} | Discounts ${_money(stats.discountCents)}',
               style: const TextStyle(fontSize: 11, color: Colors.grey),
             ),
+            if (stats.outstandingWithdrawalCents > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Outstanding withdrawals: ${_money(stats.outstandingWithdrawalCents)}',
+                  style: TextStyle(
+                      fontSize: 11, color: Colors.orange.shade800),
+                ),
+              ),
           ],
         ),
       ),
@@ -889,16 +1124,10 @@ class _ExpensesList extends ConsumerWidget {
         .watch(transactionsProvider)
         .where((t) =>
             t.batchId == batch.id &&
-            (t.type == 'withdrawal' ||
-                t.type == 'expense' ||
-                t.type == 'discount'))
+            (t.type == 'expense' || t.type == 'discount'))
         .map(
           (t) => _ExpenseRowData(
-            title: t.type == 'discount'
-                ? 'Discount'
-                : t.type == 'withdrawal'
-                    ? 'Withdrawal'
-                    : 'Expense',
+            title: t.type == 'discount' ? 'Discount' : 'Expense',
             subtitle: t.note?.isNotEmpty == true ? t.note! : 'No description',
             amountCents: t.amountCents,
             date: t.date,
@@ -1011,6 +1240,148 @@ class _ExpenseRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Withdrawals list ─────────────────────────────────────────────────────────
+
+class _WithdrawalsList extends ConsumerWidget {
+  final String batchId;
+  final void Function(TransactionModel withdrawal) onRepay;
+
+  const _WithdrawalsList({
+    required this.batchId,
+    required this.onRepay,
+  });
+
+  String _fmt(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  String _money(int cents) => '\$${(cents / 100).toStringAsFixed(2)}';
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final txs = ref.watch(transactionsProvider);
+    final withdrawals = txs
+        .where((t) => t.batchId == batchId && isWithdrawalTransaction(t))
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    if (withdrawals.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Center(
+          child: Text('No withdrawals yet',
+              style: TextStyle(color: Colors.grey)),
+        ),
+      );
+    }
+
+    final outstanding = totalOutstandingWithdrawals(
+      txs.where((t) => t.batchId == batchId).toList(),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Withdrawals',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey)),
+            Text(
+              outstanding > 0
+                  ? '${_money(outstanding)} outstanding'
+                  : '${withdrawals.length} total',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...withdrawals.map((t) {
+          final remaining = remainingWithdrawalAmount(txs, t);
+          final repaid = repaidAmountForWithdrawal(txs, t.id);
+          final isPaidOff = remaining == 0;
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              t.note?.isNotEmpty == true
+                                  ? t.note!
+                                  : withdrawalTypeLabel(t),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 14),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${withdrawalTypeLabel(t)} · ${_fmt(t.date)}'
+                              '${t.quantity != null ? ' · ${t.quantity} chickens' : ''}',
+                              style: const TextStyle(
+                                  fontSize: 11, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            isPaidOff
+                                ? _money(t.amountCents)
+                                : _money(remaining),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: isPaidOff
+                                  ? Colors.grey.shade700
+                                  : Colors.red.shade700,
+                            ),
+                          ),
+                          Text(
+                            isPaidOff
+                                ? 'Paid back'
+                                : repaid > 0
+                                    ? '${_money(repaid)} repaid of ${_money(t.amountCents)}'
+                                    : _money(t.amountCents),
+                            style: const TextStyle(
+                                fontSize: 11, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  if (!isPaidOff) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => onRepay(t),
+                        child: const Text('Pay back'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        }),
+      ],
     );
   }
 }
